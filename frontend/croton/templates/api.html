@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+
+{% block extracss %}
+<link href="{% static 'css/token-input-bootstrappy.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid  mb-5">
+    <div class="row justify-content-center mt-5">
+        <h4>Gene search API root: <a href="{% url 'search:api-root' %}">link </a></h4>
+        <h4>Predictions: <a href="{% url 'predictions:api-root' %}">link</a></h4>
+    </div>
+</div>
+
+
+
+
+{% endblock %}
+
+{% block extrajs %}
+{% endblock %}

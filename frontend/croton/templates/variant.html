@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+
+{% block extracss %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid  mb-5">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8 fs-5">
+            <p class="mt-4">
+                <h2>Variant Information</h4>
+                    <dl class="row mt-4">
+                        <dt class="col-sm-2">Chromosome:</dt>
+                        <dd id="chrom" class="col-sm-10">hohh</dd>
+                        <dt class="col-sm-2">Variant id:</dt>
+                        <dd id="variantId" class="col-sm-10"></dd>
+                        <dt class="col-sm-2">pos:</dt>
+                        <dd id="pos" class="col-sm-10"></dd>
+                    </dl>
+            </p>
+        </div>
+    </div>
+
+
+    {% endblock %}
+
+    {% block extrajs %}
+    <script type=" text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            console.log("page ready");
+
+            //read item from localStorage
+            variantData = JSON.parse(window.localStorage.getItem('variantData'));
+            console.log(variantData);
+            $('#chrom').html(variantData["chromosome"]);
+            $('#variantId').html(variantData["id"]);
+            $('#pos').html(variantData["pos"]);
+        });
+    </script>
+    {% endblock %}

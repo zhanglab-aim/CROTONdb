@@ -1,0 +1,787 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+
+{% block extracss %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
+<link href="{% static 'css/token-input-bootstrappy.css' %}" rel="stylesheet">
+
+<style>
+    .no_wrap_col {
+        white-space: nowrap;
+    }
+
+    .alt_col {
+        background-color: #E3F2FD;
+    }
+
+    .ref_col {
+        background-color: lightgoldenrodyellow;
+    }
+
+    .message_col {
+
+        /* background-color: #E3F2FD; */
+        background-color: #f5fbfe;
+
+    }
+
+    .dataTables_wrapper {
+        font-family: tahoma;
+        font-size: 0.8rem;
+    }
+
+    .plots_height {
+        height: 450px;
+    }
+
+    hr {
+        opacity: 0.12;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="p-3 mb-1 bg-light rounded-3">
+            <div class="container-fluid py-3 fs-5">
+                <p class="fs-5"><span class="logo-blue">CROTONdb</span> enables you to search for variant
+                    effect
+                    prediction for
+                    CRISPR/Cas9 editing
+                    outcomes.</p>
+            </div>
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="gene-search-tab" data-bs-toggle="tab"
+                        data-bs-target="#gene-search" type="button" role="tab" aria-controls="gene-search"
+                        aria-selected="true">Search by gene</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="region-search-tab" data-bs-toggle="tab" data-bs-target="#region-search"
+                        type="button" role="tab" aria-controls="region-search" aria-selected="false">Search by
+                        region</button>
+                </li>
+            </ul>
+            <div class="container-fluid pb-3">
+                <div class="col col-lg-12 col-md-12 col-sm-12">
+                    <div class="tab-content" id="myTabContent">
+                        <div class="tab-pane fade show active" id="gene-search" role="tabpanel"
+                            aria-labelledby="gene-search-tab">
+                            <div class="form-group mt-2">
+                                <label class="col-form-label fs-6" for="gene">Enter gene entrez or gene symbol to see
+                                    the
+                                    predictions</label>
+                                <input type="text" name="entrez" class="form-control mb-2 mr-sm-2" id="gene"
+                                    placeholder="Enter gene name">
+                            </div>
+                            <div class="form-group mt-2">
+                                <button id="submit-btn" type="submit" class="btn btn-primary ml-2">Submit</button>
+                                <button id="clear-btn" type="submit"
+                                    class="btn btn-small btn-outline-secondary ml-2">Clear</button>
+                            </div>
+                            <div class="ml-3 mt-2">
+                                <a href="#" id="example-btn">Example Gene</a>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="region-search" role="tabpanel"
+                            aria-labelledby="region-search-tab">
+                            <form class="row gy-2 gx-3 align-items-center mt-2">
+                                <label class="col-form-label fs-6" for="region">Choose chromosome and enter region
+                                    positions</label>
+                                <div class="col-auto">
+                                    <select class="form-select" id="chromosome" name="id">
+                                        {% for chr in chromosomes %}
+                                        <option value="{{chr.id}}" title="{{chr.label}}">
+                                            {{chr.label}}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+
+                                </div>
+                                <div class="col-auto">
+                                    <label class="visually-hidden" for="autoSizingInput">Name</label>
+                                    <input id="start" type="text" class="form-control" id="autoSizingInput"
+                                        placeholder="start">
+                                </div>
+                                <div class="col-auto">
+                                    <label class="visually-hidden" for="autoSizingInputGroup">Username</label>
+                                    <div class="input-group">
+                                        <div class="input-group-text">:</div>
+                                        <input id="end" type="text" class="form-control" id="autoSizingInputGroup"
+                                            placeholder="end">
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="form-group mt-2">
+                                <button id="submit-btn2" type="submit" class="btn btn-primary ml-2">Submit</button>
+                                <button id="clear-btn2" type="submit"
+                                    class="btn btn-small btn-outline-secondary ml-2">Clear</button>
+                            </div>
+                            <div class="ml-3 mt-2">
+                                <a href="#" id="example-btn2">Example Gene</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+
+
+
+        <div class="row justify-content-center">
+            <div id="no-data-warning" class="d-none col-8 col-sm-6">
+                <div class="alert alert-warning text-center" role="alert">No data found</div>
+            </div>
+        </div>
+        <div class="p-1 rounded-3">
+            <div id="message" class="message_col d-none alert col-lg-3 col-md-12 col-sm-12" role="alert"></div>
+        </div>
+    </div>
+
+
+    <!-- PLOTS -->
+    <hr class="d-none">
+    <div id="plotsSection" class="row container-fluid pt-4">
+
+        <div id="tableSummary" class="d-none pl-3 col-lg-4 plots_height">
+            <ul class="list-group pt-4 mt-4 fw-light">
+                <li class="list-group-item">
+                    <p>The query interval has <span class="fw-bold"><span id="f1"></span>
+                            Frameshift.</span></br>
+                        Predicted: <span id="f2" class="fw-bold"></span></br>
+                        Percentile over genome: <span id="f3" class="fw-bold"></span></p>
+                </li>
+                <li class="list-group-item">
+                    <p>Variant load for this query is <span class="fw-bold"><span id="v1"></span>.</span></br>
+                        Observed variants:<span id="v2" class="fw-bold"></span></br>
+                        Expected variants:<span id="v3" class="fw-bold"></span></p>
+
+                </li>
+                <li class="list-group-item">
+                    <p>The query interval has <span class="fw-bold"><span id="i1"></span> Variant Impact to
+                            Frameshift.</span></br>
+                        Predicted: <span id="i2" class="fw-bold"></span></br>
+                        Percentile over genome: <span id="i3" class="fw-bold"></span>
+                    </p>
+
+                </li>
+            </ul>
+
+        </div>
+        <div id="freqPlot" class="col-lg-3"></div>
+        <div id="snpPlot" class="col-lg-4 offset-lg-1"></div>
+
+    </div>
+</div>
+<div id="histSection" class="row container-fluid p-4">
+
+    <!--histograom for alt_1ins-->
+    <div id="alt1ins" class="col-lg-4"></div>
+    <!--histograom for alt_onemod3-->
+    <div id="alt1mod3" class="col-lg-4"></div>
+    <!--histograom for alt_twomod3-->
+    <div id="alt2mod3" class="col-lg-4"></div>
+
+</div>
+
+<hr class="d-none">
+<div class="row mt-4 mb-2">
+    <div id="tableSection" class="col-11 col-sm-11 mx-4">
+        <table id="resultsTable" class="cell-border">
+        </table>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extrajs %}
+<script type=" text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<script src="{% static 'js/jquery.tokeninput.js' %}"></script>
+<script src="https://cdn.plot.ly/plotly-2.1.0.min.js"></script>
+<script type="text/javascript" language="javascript"
+    src="https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" language="javascript"
+    src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js"></script>
+<script type="text/javascript">
+    function round(value, decimals) {
+        return Number(Math.round(value + 'e' + decimals) + 'e-' + decimals);
+    }
+
+    // FREQ BAR
+    var freqLayout = {
+        title: 'Frameshift Predictions',
+        yaxis: {
+            title: 'Average Frameshift Probability (%)'
+        },
+    };
+
+    var freqData = [{
+        x: ['1bp Frameshift', '2bp Frameshift', 'No Frameshift'],
+        y: [20, 14, 23],
+        textposition: 'top',
+        hoverinfo: 'none',
+        marker: {
+            color: '#E3F2FD'
+        },
+        type: 'bar'
+    }];
+
+    //MUTATION COUNTS
+    var xLabels = ['A', 'C', 'G', 'T'];
+    var mutationATrace = {
+        x: xLabels,
+        //from A,C,G,T
+        y: [0, 0, 0, 0],
+        name: 'A',
+        type: 'bar',
+        marker: {
+            color: '#E3F2FD',
+        },
+        hovertemplate: '%{x} -> A (%{y})',
+
+    }
+
+    var mutationCTrace = {
+        x: xLabels,
+        //from A,C,G,T
+        y: [0, 0, 0, 0],
+        name: 'C',
+        type: 'bar',
+        marker: {
+            color: '#e3fdee',
+        },
+        hovertemplate: '%{x} -> C (%{y})',
+
+
+
+    }
+    var mutationGTrace = {
+        x: xLabels,
+        //from A,C,G,T
+        y: [0, 0, 0, 0],
+        //text: ['G', 'G', 'G', 'G'],
+        name: 'G',
+        type: 'bar',
+        marker: {
+            color: '#fde3f2'
+        },
+        hovertemplate: '%{x} -> G (%{y})',
+
+
+    }
+    var t_values = [99, 967, 292, 0];
+    var mutationTTrace = {
+        x: xLabels,
+        //from A,C,G,T
+        y: [0, 0, 0, 0],
+        //text: t_values.map(String),
+        name: 'T',
+        type: 'bar',
+        marker: {
+            color: '#fdeee3'
+        },
+        hovertemplate: '%{x} -> T (%{y})',
+
+    }
+    var mutationTitle = 'Nucleotide Substitution Frequency Map';
+    var mutationLayout = {
+        barmode: 'stack',
+        title: mutationTitle,
+        yaxis: {
+            title: 'Frequency'
+        },
+        xaxis: {
+            title: 'Reference Allele'
+        },
+        showlegend: true,
+        legend: {
+            title: {
+                text: 'Alternative Allele'
+            }
+        },
+
+
+    };
+    x = [0];
+    //histogram alt1ins
+    var histTitle = 'Predicted Probabilities (%)';
+    var alt1insLayout = {
+        title: "Alt. 1bp Insertion",
+        yaxis: {
+            title: 'Density'
+        },
+        xaxis: {
+            title: histTitle,
+            range: [0, 100],
+
+        },
+    };
+
+    var alt1insTrace = {
+        x: x,
+        type: 'histogram',
+        marker: {
+            color: '#E3F2FD'
+        },
+
+    };
+    var alt1mod3Layout = {
+        title: "Alt. 1bp Frameshift",
+        yaxis: {
+            title: 'Density'
+        },
+        xaxis: {
+            title: histTitle,
+            range: [0, 100],
+        },
+    };
+
+    var alt1mod3Trace = {
+        x: x,
+        type: 'histogram',
+        marker: {
+            color: '#E3F2FD'
+        },
+
+    };
+    var alt2mod3Layout = {
+        title: "Alt. 2bp Frameshift",
+        yaxis: {
+            title: 'Density'
+        },
+        xaxis: {
+            title: histTitle,
+            range: [0, 100],
+        },
+    };
+
+    var alt2mod3Trace = {
+        x: x,
+        type: 'histogram',
+        marker: {
+            color: '#E3F2FD'
+        },
+
+    };
+
+
+
+    $(document).ready(function () {
+
+        dataTable = $("#resultsTable").DataTable({
+            dom: 'Bfrtip',
+            buttons: [{
+                extend: 'csv',
+                text: 'Export to CSV',
+                className: 'btn btn-small btn-outline-secondary',
+            }],
+            data: [],
+
+            columnDefs: [{
+                    className: "no_wrap_col",
+                    targets: [5]
+                },
+                {
+                    className: "ref_col",
+                    targets: [2, 7, 8, 9]
+                },
+                {
+                    className: "alt_col",
+                    targets: [3, 10, 11, 12]
+                },
+                {
+                    render: function (data, type, row) {
+                        return (100 * data).toFixed(1);
+                    },
+                    //starting from abs_diff, index starts at 0
+                    "targets": [6, 7, 8, 9, 10, 11, 12]
+
+                },
+                {
+                    "targets": [0],
+                    render: function (data, type, row) {
+                        data = '<a class="link" href="predictions/variant/' +
+                            encodeURIComponent(data) +
+                            '">' + data + '</a>';
+                        return (data);
+                    }
+
+                },
+                {
+                    "targets": [5],
+                    render: function (data, type, row) {
+                        var label = row["strand"] + " : " + row["start"] +
+                            "&numsp;-&numsp;" +
+                            row["end"];
+                        return label;
+                    }
+                },
+                {
+                    "targets": [13],
+                    render: function (data, type, row) {
+                        return row["ref_seq"] + "<br/>" + row["alt_seq"];
+                    }
+                }
+            ],
+            columns: [{
+                    "data": "id",
+                    "title": "Variant ID"
+                },
+                {
+                    "data": "pos",
+                    "title": "Variant Position"
+                },
+                {
+                    "data": "ref",
+                    "title": "Ref. Allele"
+                },
+                {
+                    "data": "alt",
+                    "title": "Alt. Allele"
+                },
+                {
+                    "data": "pamid",
+                    "title": "PAM ID",
+                },
+                {
+                    "data": "start-end",
+                    "title": "PAM&numsp;Range",
+                },
+                {
+                    "data": "abs_diff",
+                    "title": "Max Variant Effect (%)"
+                },
+                //reference
+                {
+                    "data": "ref_1ins",
+                    "title": "Ref. 1bp Insertion (%)"
+                },
+                {
+                    "data": "ref_onemod3",
+                    "title": "Ref. 1bp Frameshift (%)"
+                },
+                {
+                    "data": "ref_twomod3",
+                    "title": "Ref. 2bp Frameshift (%)"
+                },
+                //alternate
+                {
+                    "data": "alt_1ins",
+                    "title": "Alt. 1bp Insertion (%)"
+                },
+                {
+                    "data": "alt_onemod3",
+                    "title": "Alt. 1bp Frameshift (%)"
+                },
+                {
+                    "data": "alt_twomod3",
+                    "title": "Alt. 2bp Frameshift (%)"
+                },
+                {
+                    "data": "ref_seq",
+                    "title": "Ref. and Alt. Sequences"
+                },
+
+            ],
+            rowCallback: function (row, data) {},
+            // filter: false,
+            // info: false,
+            // ordering: false,
+            // processing: true,
+            // retrieve: true
+        });
+
+
+        //only save the current link data when somebody clicks on the link
+        $('#resultsTable tbody').on('click', 'tr', function () {
+            console.log(this);
+            var data = dataTable.row(this).data();
+            window.localStorage.setItem('variantData', JSON.stringify(data));
+        });
+
+        $("#tableSection").hide();
+        $("#tableSummary").hide();
+        $("hr").hide();
+        $("#tableSummary").removeClass(
+            'd-none');
+        $("hr").removeClass(
+            'd-none');
+
+
+        function clearContent() {
+            console.log("clear content");
+            $('#no-data-warning').addClass('d-none');
+            $("#message").addClass('d-none');
+
+            $("#tableSection").hide();
+            $("#plotsSection").hide();
+            $("#tableSummary").hide();
+            $("#histSection").hide();
+            $("hr").hide();
+        }
+
+        $("#clear-btn").click(function () {
+            clearContent();
+        });
+
+        $("#clear-btn2").click(function () {
+            clearContent();
+        });
+
+        $('#example-btn').click(function (e) {
+            e.preventDefault();
+            $("#gene").tokenInput("clear");
+
+            $("#gene").tokenInput("add", {
+                id: 59272,
+                name: "ACE2"
+            });
+            // $("#gene").tokenInput("add", {
+            //     id: 5133,
+            //     name: "PDCD1"
+            // });
+
+            $("#submit-btn").removeAttr('disabled');
+        });
+
+        $('#example-btn2').click(function (e) {
+            e.preventDefault();
+            $("#chromosome").val('13');
+            $("#start").val("19173851");
+            $("#end").val("19173852");
+            $("#submit-btn2").removeAttr('disabled');
+        });
+
+
+        var hint = "Enter a gene name or entrez id";
+        $("#gene").tokenInput('{% url "genes:search" %}', {
+            theme: 'facebook',
+            queryParam: 'query',
+            minChars: 2,
+            preventDuplicates: true,
+            tokenLimit: function () {
+                return 1;
+            },
+            hintText: hint,
+            noResultsText: "No gene found",
+            resultsFormatter: function (item) {
+                return "<li>" + item.name + " <small>(" + item.id + ") " + item.aliases +
+                    "</small>" + "</li>";
+            },
+            onAdd: function () {
+                $('#no-data-warning').addClass('d-none');
+                $('#token-input-gene').attr('placeholder', "");
+                if ($("#gene").tokenInput('get').length > 0)
+                    $("#submit-btn").removeAttr('disabled');
+            },
+            onDelete: function () {
+                $('#no-data-warning').addClass('d-none');
+                if ($("#gene").tokenInput('get').length == 0) {
+                    $('#token-input-gene').attr('style', 'width:250px;');
+                    $('#token-input-gene').attr('placeholder', hint);
+                }
+            },
+        });
+        //what not to show in the modebar
+        var modeBarButtonsToRemoveList = ['zoom2d', 'pan2d', 'select2d',
+            'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'
+        ]
+
+        function showPlots(data, searchType) {
+            console.log("showPlots");
+            if (data["results"]["total"] == 0) {
+                console.log("no predictions data");
+                console.log(data);
+                $('#no-data-warning').removeClass('d-none');
+                return;
+            }
+
+            $("#plotsSection").show();
+
+            //-------------------
+            //frequencies stats
+            //-------------------
+            var freqJson = data["stats"]["freq"];
+            freqData[0]['y'] = [(freqJson["ref_onemod3_mean"]).toFixed(2),
+                (freqJson["ref_twomod3_mean"]).toFixed(2),
+                (freqJson["no_frameshift"]).toFixed(2)
+            ];
+            freqData[0]['text'] = (freqData[0]['y']).map(String);
+            //freqLayout["title"] = gene_name;
+            Plotly.newPlot('freqPlot', freqData, freqLayout, {
+                modeBarButtonsToRemove: modeBarButtonsToRemoveList
+            });
+
+
+            //-------------------
+            //SNP mutations plot
+            //-------------------
+            var snpJson = data["stats"]["snp"];
+            snpJson["toA"].forEach(function (item, index) {
+                mutationATrace['y'][index] = item;
+            });
+            snpJson["toC"].forEach(function (item, index) {
+                mutationCTrace['y'][index] = item;
+            });
+            snpJson["toG"].forEach(function (item, index) {
+                mutationGTrace['y'][index] = item;
+            });
+            snpJson["toT"].forEach(function (item, index) {
+                mutationTTrace['y'][index] = item;
+            });
+
+            var mutationData = [mutationATrace, mutationCTrace, mutationGTrace,
+                mutationTTrace
+            ];
+            //mutationLayout["title"] = mutationTitle + gene_name;
+            Plotly.newPlot('snpPlot', mutationData, mutationLayout, {
+                modeBarButtonsToRemove: modeBarButtonsToRemoveList
+            });
+
+            //-------------------
+            //histograms
+            //-------------------
+            $("#histSection").show();
+            alt1insTrace['x'] = data["stats"]["histograms"]["alt1ins"];
+            var alt1insData = [alt1insTrace];
+            Plotly.newPlot('alt1ins', alt1insData, alt1insLayout, {
+                modeBarButtonsToRemove: modeBarButtonsToRemoveList
+            });
+
+            alt1mod3Trace['x'] = data["stats"]["histograms"]["alt1mod3"];
+            var alt1mod3Data = [alt1mod3Trace];
+            Plotly.newPlot('alt1mod3', alt1mod3Data, alt1mod3Layout, {
+                modeBarButtonsToRemove: modeBarButtonsToRemoveList
+            });
+
+
+            alt2mod3Trace['x'] = data["stats"]["histograms"]["alt2mod3"];
+            var alt2mod3Data = [alt2mod3Trace];
+            Plotly.newPlot('alt2mod3', alt2mod3Data, alt2mod3Layout, {
+                modeBarButtonsToRemove: modeBarButtonsToRemoveList
+            });
+
+            //TABLE SUMMARY
+            $("#tableSummary").show();
+            var summary = data["summary"];
+            $('#f1').html(data["summary"]["frameshift"]["category"]);
+            $('#f2').html(data["summary"]["frameshift"]["predicted"]);
+            $('#f3').html(data["summary"]["frameshift"]["perc_over_genome"]);
+            $('#v1').html(data["summary"]["variant_load"]["category"]);
+            $('#v2').html(data["summary"]["variant_load"]["observed"]);
+            $('#v3').html(data["summary"]["variant_load"]["expected"]);
+            $('#i1').html(data["summary"]["variant_impact"]["category"]);
+            $('#i2').html(data["summary"]["variant_impact"]["predicted"]);
+            $('#i3').html(data["summary"]["variant_impact"][
+                "perc_over_genome"
+            ]);
+
+            //-------------------
+            //Data table
+            //-------------------
+            $("#tableSection").show();
+
+
+
+
+            dataTable.clear();
+            dataTable.rows.add(data["results"][
+                "predictions"
+            ]).draw();
+
+            $("hr").show()
+        }
+
+
+        $("#submit-btn").click(function () {
+
+            $('#no-data-warning').addClass('d-none');
+            $('#message').html('');
+            console.log("Querying from submit btn");
+
+            var token_list = $('#gene').tokenInput("get");
+            var entrez_str = '';
+            var gene_name = '';
+            for (var i = 0; i < token_list.length; i++) {
+                entrez_str = token_list[i].id;
+                gene_name = token_list[i].name;
+            }
+            query_str = ("/predictions/gene/0/").replace('0', entrez_str);
+            console.log(query_str);
+            clearContent();
+            $.ajax({
+                url: query_str,
+
+                success: function (data) {
+                    showPlots(data);
+
+                    var query = data["query"];
+                    var data_str = "Gene <strong>" + gene_name +
+                        "</strong> resides on " + query["chromosome"];
+
+                    $('#message').html(data_str);
+                    $("#message").removeClass(
+                        'd-none');
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                    $('#no-data-warning').removeClass('d-none');
+                },
+            });
+        });
+
+
+        $("#submit-btn2").click(function () {
+            clearContent();
+            $('#no-data-warning').addClass('d-none');
+            $('#message').html('');
+            console.log("Querying from submit btn 2");
+
+            var chrom_str = $('#chromosome').val();
+            var start = $('#start').val();
+            var end = $('#end').val();
+            var query_str = ("/predictions/chrom/0/").replace('0', chrom_str);
+            console.log(query_str);
+
+            $.ajax({
+                url: query_str,
+                data: {
+                    start: start,
+                    end: end
+                },
+
+                success: function (data) {
+
+                    showPlots(data);
+
+                    var query = data["query"];
+                    var data_str = "Data from " + query["chromosome"] + " chromosome";
+                    $('#message').html(data_str);
+                    $("#message").removeClass(
+                        'd-none');
+
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                    $('#no-data-warning').removeClass('d-none');
+                },
+            });
+        });
+
+    });
+</script>
+
+{% endblock %}

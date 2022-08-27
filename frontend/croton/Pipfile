@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+django = "==3.2"
+djangorestframework = "*"
+pymysql = "*"
+requests = "*"
+django-elasticsearch-dsl-drf = "*"
+django-elasticsearch-dsl = "==6.5.0"
+elasticsearch = "==6.8.2"
+elasticsearch-dsl = "==6.4.0"
+#pysam = "*"
+pandas = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.7"

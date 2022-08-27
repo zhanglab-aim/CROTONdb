@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+
+{% block extracss %}
+<link href="{% static 'css/token-input-bootstrappy.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid  mb-5">
+    <div class="row justify-content-center">
+
+        <div class="col-lg-8 fs-5">
+            <p class="my-5">
+                <img src="{% static 'img/logo.png' %}" class="figure-img img-fluid" style="min-width: inherit;"
+                    alt="croton logo" />
+            </p>
+
+
+            <h3><span class="logo-blue">CROTONdb:</span> variant effect prediction database for CRISPR/Cas9 editing
+                outcomes.</h2>
+
+                <p class="mt-4">
+                    CRISPR/Cas9 is a revolutionary gene-editing technology that has been widely utilized in
+                    biology,
+                    biotechnology,
+                    and
+                    medicine. Increasingly, this state of the art gene-editing technology is being applied to human
+                    samples.
+                    For
+                    basic
+                    biological research, CRISPR/Cas9 is often utilized in primary cell lines derived from human donors.
+                    Primary
+                    cells
+                    are
+                    ubiquitous in biomedicine, and they have been used in fields ranging from virology to cell therapy,
+                    vaccine
+                    production,
+                    and drug screening. In addition, in the clinic, therapies that involve CRISPR/Cas9-mediated editing
+                    of
+                    cells
+                    derived
+                    from patients have been deemed safe and feasible. These therapies involve the correction of genetic
+                    deficiencies
+                    as
+                    well
+                    as the engineering of patient-derived cell lines to target disease.</p>
+
+                <p class="mt-3">The human population contains a large amount of genomic variation. A major subset of
+                    human
+                    genetic
+                    diversity are
+                    single
+                    nucleotide variants (SNVs). Indeed, there are 10 to 15 million common SNVs present in the human
+                    population.
+                    Since
+                    CRISPR/Cas9 editing outcomes are dependent on the genomic context of target sequences, these common
+                    variants
+                    have
+                    the
+                    potential to significantly affect the outcomes of CRISPR/Cas9-based editing. However, the effect of
+                    genetic
+                    alterations
+                    on CRISPR/Cas9 editing outcomes has not been systematically studied or documented, even as
+                    CRISPR/Cas9
+                    is
+                    increasingly
+                    applied to primary cells and patient samples that may harbor such genetic diversity.</p>
+
+                <p class="mt-3">Any researcher or clinician looking to apply CRISPR/Cas9 editing in samples that may
+                    harbor
+                    genomic
+                    variation can
+                    reference our website to guide their target sequence selection. Whether in the laboratory or the
+                    clinic,
+                    our
+                    model
+                    has
+                    broad applications in ensuring CRISPR/Cas9-based studies or treatments are consistent, effective,
+                    and
+                    equitable.
+                </p>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extrajs %}
+{% endblock %}

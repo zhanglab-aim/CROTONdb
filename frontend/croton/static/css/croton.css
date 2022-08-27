@@ -1,0 +1,34 @@
+.croton-navbar {
+    background-color: #e3f2fd;
+
+}
+
+.logo-blue {
+    color: #05AFF0;
+}
+
+.logo-green {
+    color: #88E985;
+}
+
+.logo-dk-green {
+    color: #0A7506;
+}
+
+
+p {
+    font-family: 'Roboto', sans-serif !important;
+}
+
+.elem {
+    font-weight: 600;
+    font-size: smaller;
+}
+
+.elem-desc {
+    font-weight: 400;
+    color: darkslategrey;
+    font-size: smaller;
+}
+
+#helpTable.th {}

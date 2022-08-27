@@ -1,0 +1,17 @@
+<table class="table table-striped table-condensed">
+    <thead>
+        <tr><td>Name</td><td>Description</td><td>External IDs</td></tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><strong>{{ gene.standard_name }}</strong></td><td>{{ gene.description }}</td>
+        <td>
+            Entrez:{{ gene.entrez }}&nbsp
+    {% for xref in gene.get_xrefs %}
+            {{xref.crossrefdb.name}}:<a href="{{ xref.get_absolute_url }}">{{ xref.xrid }}</a>&nbsp  
+    {% endfor %}
+        </td>
+    </tr>
+    </tbody>
+</table>
+

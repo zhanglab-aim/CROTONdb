@@ -1,0 +1,10 @@
+<!-- templates/genes/gene_list.html-->
+{% extends 'base.html' %}
+{%block content%}
+<table>
+<tr><th>Genes</th></tr>
+{% for gene in gene_list %}
+<tr><td><a href="{{ gene.get_absolute_url }}">{{ gene }}</a> ({{gene.entrez}})</td></tr>
+{% endfor %}
+</table>
+{%endblock%}

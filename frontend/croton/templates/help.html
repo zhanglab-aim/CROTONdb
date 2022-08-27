@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+
+{% block extracss %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
+<link href="{% static 'css/token-input-bootstrappy.css' %}" rel="stylesheet">
+
+
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid  mb-5">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8 fs-5">
+            <div class="my-5">
+                <h2>Help</h3>
+            </div>
+            <hr>
+            <p class="mt-4">
+                <h2>Abbreviations</h4>
+                    <dl class="row mt-4">
+                        <dt class="col-sm-1">SNV:</dt>
+                        <dd class="col-sm-11">single nucleotide variant</dd>
+                        <dt class="col-sm-1">nt:</dt>
+                        <dd class="col-sm-11">nucleotide</dd>
+                        <dt class="col-sm-1">bp:</dt>
+                        <dd class="col-sm-11">base pair</dd>
+                        <dt class="col-sm-1">indel:</dt>
+                        <dd class="col-sm-11">insertion or deletion</dd>
+                        <dt class="col-sm-1">ref:</dt>
+                        <dd class="col-sm-11">reference</dd>
+                        <dt class="col-sm-1">alt:</dt>
+                        <dd class="col-sm-11">alternate</dd>
+                    </dl>
+                    <h5>Notes:</h5>
+                    <ul class="list-unstyled">
+                        <li>1 bp insertion probability = proportion of indel outcomes that are 1 bp insertions</li>
+                        <li>1 bp frameshift frequency = proportion of indel outcomes that induce a 1 bp frameshift</li>
+                        <li>2 bp frameshift frequency = proportion of indel outcomes that induce a 2 bp frameshift</li>
+                        <li>(Overall) frameshift frequency = proportion of indel outcomes that induce a frameshift (1
+                            or 2 bp)</li>
+                    </ul>
+
+            </p>
+            <hr>
+            <p class="mt-4">
+                <h2>Visualizations</h2>
+                <p class="mt-5">
+                    <h4>Frameshift, variant load, variant impact on frameshift</h4>
+                    <p class="mt-2">
+                        <img src="{% static 'img/table_summary.png' %}" class="figure-img img-fluid"
+                            style="min-width: inherit;" alt="table summary" />
+                    </p>
+                    These three text boxes put CROTON’s frameshift frequency predictions for a gene in the whole
+                    genome
+                    context, describe the variant load for the user’s gene query, and examine the extent to which
+                    variants on a gene impact predicted frameshift frequency. These texts are particularly helpful
+                    for
+                    users looking to induce a knockout of their gene of interest and would like more contextual
+                    information regarding their target gene’s frameshift frequency.
+
+                </p>
+                <p class="mt-5">
+                    <h4>Frameshift predictions</h4>
+                    <p class="mt-2">
+                        <img src="{% static 'img/frameshift_predictions.png' %}" class="figure-img img-fluid"
+                            style="min-width: inherit;" alt="frameshift_predictions " />
+                    </p>
+                    This bar graph shows CROTON’s average frameshift probability predictions over the entire queried
+                    gene body. This graph provides a visualization of a gene’s overall frameshift probabilities, and
+                    it
+                    is helpful to users looking to evaluate whether their potential gene targets have higher or
+                    lower
+                    frameshift frequency relative to all potential PAM targets on their gene if interest.
+                </p>
+                <p class="mt-5">
+                    <h4>Nucleotide Substitution Frequency Map</h4>
+                    <p class="mt-2">
+                        <img src="{% static 'img/ns_frequency_map.png' %}" class="figure-img img-fluid"
+                            style="min-width: inherit;" alt="Nucleotide Substitution Frequency Map " />
+                    </p>
+                    This bar graph displays the SNVs present on a particular gene. On the x-axis are the alleles
+                    present
+                    in the reference genome and along the y-axis are stacked bars representing the frequency of
+                    alternative alleles.
+                </p>
+                <p class="mt-5">
+                    <h4>Histograms for alternate 1 bp insertion, 1 bp frameshift, 2 bp frameshift</h4>
+                    <p class="mt-2">
+                        <img src="{% static 'img/histograms.png' %}" class="figure-img img-fluid"
+                            style="min-width: inherit;" alt="Nucleotide Substitution Frequency Map " />
+                    </p>
+                    This is a series of three histograms describing the distribution of CROTON’s alternate 1 bp
+                    insertion probability, 1 bp frameshift frequency, and 2 bp frameshift frequency predictions.
+                    These
+                    histograms can help users evaluate whether variants present in their potential target regions
+                    have a
+                    significant effect on CRISPR/Cas9 editing outcomes.
+                </p>
+            </p>
+            <hr>
+            <p class="mt-4">
+                <h2>Table</h2>
+                <table id="helpTable" class="table table-bordered table-sm">
+                    <thead>
+                        <tr class="elem">
+                            <th scope="col">#</th>
+                            <th scope="col">Column header</th>
+                            <th scope="col">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row" class="elem">1</th>
+                            <td class="elem font-weight-bold">Variant ID</td>
+                            <td class="elem-desc">unique identifier for the SNV</td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">2</th>
+                            <td class="elem ">Variant Position</td>
+                            <td class="elem-desc"> the genomic position of the SNV
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">3</th>
+                            <td class="elem ">Reference Allele</td>
+                            <td class="elem-desc">the nt present in the reference genome
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">4</th>
+                            <td class="elem ">Alternate Allele</td>
+                            <td class="elem-desc"> the nt present in an alternate genome
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">5</th>
+                            <td class="elem ">PAM ID</td>
+                            <td class="elem-desc">unique identifier for the PAM site<p>PAM ID is defined as [`genename`]
+                                    | [`num`] where `num` identifies the PAM site of a specific gene. The `num` of the
+                                    PAM site increases as the position of the first nt of the 60 bp section of the
+                                    gene-of-interest increases on the positive strand.</p>
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">6</th>
+                            <td class="elem ">PAM Range</td>
+                            <td class="elem-desc">describes the position of the 60 bp sequence CROTON uses to make
+                                predictions
+                                <p>PAM Range is defined as [`strand`] : [`start`] – [`end`] where `strand` indicates if
+                                    the PAM site is sense (+) or antisense (–), and `start` and `end` indicate the
+                                    position of the first and last nt, respectively, of the CROTON input sequence. </p>
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">7</th>
+                            <td class="elem ">Max Variant Effect</td>
+                            <td class="elem-desc">The maximum absolute difference between CROTON’s set of predictions
+                                for the reference and alternate sequence inputs. [This is the maximum between CROTON’s
+                                reference and alternate predictions for the set of statistics: 1 bp insertion
+                                probability, 1 bp frameshift frequency, and 2 bp frameshift frequency (shown in table),
+                                as well as deletion frequency, 1 bp deletion frequency, and overall frameshift frequency
+                                (not shown in table).]
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">8</th>
+                            <td class="elem ">Ref. 1 bp insertion</td>
+                            <td class="elem-desc"> CROTON’s 1 bp insertion probability prediction for the reference
+                                sequence
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">9</th>
+                            <td class="elem ">Ref. 1 bp frameshift</td>
+                            <td class="elem-desc">CROTON’s 1 bp frameshift frequency prediction for the reference
+                                sequence
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">10</th>
+                            <td class="elem ">Ref. 2 bp frameshift</td>
+                            <td class="elem-desc">CROTON’s 2 bp frameshift frequency prediction for the reference
+                                sequence
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">11</th>
+                            <td class="elem ">Alt. 1 bp insertion</td>
+                            <td class="elem-desc"> CROTON’s 1 bp insertion probability prediction for the alternate
+                                sequence
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">12</th>
+                            <td class="elem ">Alt. 1 bp frameshift</td>
+                            <td class="elem-desc">CROTON’s 1 bp frameshift frequency prediction for the alternate
+                                sequence
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">13</th>
+                            <td class="elem ">Alt. 2 bp frameshift</td>
+                            <td class="elem-desc">CROTON’s 2 bp frameshift frequency prediction for the alternate
+                                sequence
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <th scope="row" class="elem">14</th>
+                            <td class="elem ">Ref_seq and alt_seq</td>
+                            <td class="elem-desc">The 60 bp PAM-containing sequence in the reference and alternate
+                                genome (the 0-index PAM site is at position 33). There is a single nucleotide difference
+                                between the reference and alternate sequences.</td>
+
+                        </tr>
+
+                    </tbody>
+                </table>
+            </p>
+            <hr>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extrajs %}
+
+{% endblock %}
