@@ -64,10 +64,13 @@ class ChromosomePredictionsViewSet(viewsets.ViewSet):
             start=start,
             end=end
         )
-        header_map = {}
         # if no header included, use the default header as defined in HEADER_MAP
         if not is_header:
             header_map = HEADER_MAP
+        # if has header, parse the index-to-column map
+        else:
+            header_map = {i: x for i, x in enumerate(tabix_results.columns)}
+        print("Using header map:", header_map)
 
         results_len = len(tabix_results)
         print('Results length: {}'.format(results_len))
@@ -126,11 +129,13 @@ class GenePredictionsViewSet(viewsets.ReadOnlyModelViewSet):
             start=start,
             end=end
         )
-        header_map = {}
         # if no header included, use the default header as defined in HEADER_MAP
         if not is_header:
             header_map = HEADER_MAP
-
+        # if has header, parse the index-to-column map
+        else:
+            header_map = {i: x for i, x in enumerate(tabix_results.columns)}
+        print("Using header map:", header_map)
         response = build_response_json(tabix_results, header_map)
 
         # extend response with query information

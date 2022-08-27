@@ -4,7 +4,7 @@ import pprint
 import statistics
 from .utils import fetch_tabix_croton_predictions
 from .utils import fetch_tabix_croton_predictions, convert_tabix_results, build_response_json
-from .utils import HEADER_MAP, header_map_new
+from .utils import HEADER_MAP
 from .table_summary import TableSummary
 
 test_resources_dir = 'predictions/test/'
@@ -193,10 +193,6 @@ class PredictionResultTestCase(TestCase):
             start=start,
             end=end,
         )
-        
-        '''
-        try: self.response1 = build_response_json(res1, HEADER_MAP)
-        except: self.response1 = build_response_json(res1, header_map_new)'''
         self.response1 = build_response_json(res1, HEADER_MAP)
         self.pp = pprint.PrettyPrinter(indent=4)
         self.pp.pprint(self.response1)
@@ -213,10 +209,8 @@ class PredictionResultTestCase(TestCase):
             end=end,
         )
         print(res2)
-        '''
-        try: self.response2 = build_response_json(res2, HEADER_MAP)
-        except: self.response2 = build_response_json(res2, header_map_new)'''
         self.response2 = build_response_json(res2, HEADER_MAP)
+
     def test(self):
         self.assertEqual(3, self.response1['results']['total'])
 

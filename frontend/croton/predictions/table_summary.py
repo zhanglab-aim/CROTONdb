@@ -6,9 +6,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as ss
 import pickle
-from django.conf import settings
 from utils.hostname import timeit
-
 
 #ECDF = pickle.load(open('/mnt/ceph/users/zzhang/croton/data/052121-variant-2/gw_data.pkl', 'rb'))
 
@@ -16,26 +14,12 @@ from utils.hostname import timeit
 class TableSummary:
     # class namespace CONSTANTS
     REF_PRED_POSITIONS = [
-        20,  # ref 1ins
-        26,  # ref onemod3
-        29,  # ref twomod3
-        32,  # ref frameshift
-    ]
-    DIFF_PRED_POSITIONS = [
-        22,  # diff 1ins
-        28,  # diff onemod3
-        31,  # diff twomod3
-        34,  # diff frameshift
-    ]
-
-    REF_PRED_POSITIONS_new = [
         'ref_1ins',
         'ref_onemod3',
         'ref_twomod3',
         'ref_frameshift'
     ]
-
-    DIFF_PRED_POSITIONS_new = [
+    DIFF_PRED_POSITIONS = [
         'diff_1ins',
         'diff_onemod3',
         'diff_twomod3',
@@ -169,8 +153,9 @@ class TableSummary:
         return result_dict
 
     def get_pred_percentile(self, res, pred_pos, ecdf_key, take_abs=False):
-        try: 
-            pred_idx = [self.header_map[i] for i in pred_pos]
+        try:
+            #pred_idx = [self.header_map[i] for i in pred_pos]
+            pred_idx = pred_pos
             interval_preds = res[['pamid'] + pred_idx].drop_duplicates()
             if take_abs is True:
                 preds = interval_preds[pred_idx].astype(
@@ -178,28 +163,22 @@ class TableSummary:
             else:
                 preds = interval_preds[pred_idx].astype('float').mean().to_dict()
             preds_cdf = {k: self.ecdf[ecdf_key]['%.3f' % v][k]
-                        for k, v in preds.items()}
-        except:
-            preds = preds_cdf = {'ref_1ins':1, 'ref_onemod3':1, 'ref_twomod3':1, 'ref_frameshift':1, 'diff_1ins': 1, 'diff_onemod3':1, 'diff_twomod3':1, 'diff_frameshift':1} 
+                         for k, v in preds.items()}
+        except Exception as e:
+            print("XX Exception found: ", e)
+            preds = preds_cdf = {'ref_1ins': 1, 'ref_onemod3': 1, 'ref_twomod3': 1, 'ref_frameshift': 1, 'diff_1ins': 1,
+                                 'diff_onemod3': 1, 'diff_twomod3': 1, 'diff_frameshift': 1}
 
         return preds, preds_cdf
 
     def refpred_percentile(self, res):
-        try: 
-            preds, preds_cdf = self.get_pred_percentile(
-                res, pred_pos=self.REF_PRED_POSITIONS, ecdf_key='ref_cdf')
-        except:
-            preds, preds_cdf = self.get_pred_percentile(
-                res, pred_pos=self.REF_PRED_POSITIONS_new, ecdf_key='ref_cdf')
+        preds, preds_cdf = self.get_pred_percentile(
+            res, pred_pos=self.REF_PRED_POSITIONS, ecdf_key='ref_cdf')
         return preds, preds_cdf
 
     def vareff_percentile(self, res):
-        try: 
-            preds, preds_cdf = self.get_pred_percentile(
-                res, pred_pos=self.DIFF_PRED_POSITIONS, ecdf_key='diff_cdf', take_abs=True)
-        except:
-            preds, preds_cdf = self.get_pred_percentile(
-                res, pred_pos=self.DIFF_PRED_POSITIONS_new, ecdf_key='diff_cdf', take_abs=True)
+        preds, preds_cdf = self.get_pred_percentile(
+            res, pred_pos=self.DIFF_PRED_POSITIONS, ecdf_key='diff_cdf', take_abs=True)
         return preds, preds_cdf
 
     def varcnt_percentile(self, res):

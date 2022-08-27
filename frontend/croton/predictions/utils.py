@@ -67,47 +67,6 @@ HEADER_MAP = {
 }
 
 
-header_map_new = {
-    'chrom#': "chromosome",
-    'pos': "pos",
-    'id': "id",
-    'ref': "ref",
-    "alt": "alt",
-    "pamid": "pamid",
-    "genename": "genename",
-    "num": "num",
-    "start": "start",
-    "end": "end",
-    "strand": "strand",
-    "inx": "inx",
-    "ref_seq": "ref_seq",
-    "alt_seq": "alt_seq",
-    "ref_preds": "ref_preds",
-    "alt_preds": "alt_preds",
-    "abs_diff": "abs_diff",
-    "ref_del_frq": "ref_del_frq",
-    "alt_del_frq": "alt_del_frq",
-    "diff_del_frq": "diff_del_frq",
-    "ref_1ins": "ref_1ins",
-    "alt_1ins": "alt_1ins",
-    "diff_1ins": "diff_1ins",
-    "ref_1del": "ref_1del",
-    "alt_1del": "alt_1del",
-    "diff_1del": "diff_1del",
-    "ref_onemod3": "ref_onemod3",
-    "alt_onemod3": "alt_onemod3",
-    "diff_onemod3": "diff_onemod3",
-    "ref_twomod3": "ref_twomod3",
-    "alt_twomod3": "alt_twomod3",
-    "diff_twomod3": "diff_twomod3",
-    "ref_frameshift": "ref_frameshift",
-    "alt_frameshift": "alt_frameshift",
-    "diff_frameshift": "diff_frameshift",
-    'AF_info': 'AF_info'
-}
-
-#chrom	pos	id	ref	alt	pamid	genename	num	start	end	strand	inx	ref_seq	alt_seq	ref_preds	alt_preds	abs_diff	ref_del_frq	alt_del_frq	diff_del_frq	ref_1ins	alt_1ins	diff_1ins	ref_1del	alt_1del	diff_1del	ref_onemod3	alt_onemod3	diff_onemod3	ref_twomod3	alt_twomod3	diff_twomod3	ref_frameshift	alt_frameshift	diff_frameshift	AF_info
-
 @timeit
 def fetch_tabix_croton_predictions(
     tabix_file_or_url,
@@ -199,54 +158,46 @@ def build_response_json(tabix_results_df, header_map):
         response["results"]["total"] = 0
         return response
 
-    REF_INDEX = 3
-    ALT_INDEX = 4
-    REF1MOD3_INDEX = 26
-    REF2MOD3_INDEX = 29
-    ALT1INS_INDEX = 21
-    ALT1MOD3_INDEX = 27
-    ALT2MOD3_INDEX = 30
-    try:
-        assert header_map[REF_INDEX] == 'ref'
-        assert header_map[ALT_INDEX] == 'alt'
-        assert header_map[REF1MOD3_INDEX] == 'ref_onemod3'
-        assert header_map[REF2MOD3_INDEX] == 'ref_twomod3'
-        assert header_map[ALT1INS_INDEX] == 'alt_1ins'
-        assert header_map[ALT1MOD3_INDEX] == 'alt_onemod3'
-        assert header_map[ALT2MOD3_INDEX] == 'alt_twomod3'
-    except: pass
+    # REF_INDEX = 3
+    # ALT_INDEX = 4
+    # REF1MOD3_INDEX = 26
+    # REF2MOD3_INDEX = 29
+    # ALT1INS_INDEX = 21
+    # ALT1MOD3_INDEX = 27
+    # ALT2MOD3_INDEX = 30
+    # assert header_map[REF_INDEX] == 'ref'
+    # assert header_map[ALT_INDEX] == 'alt'
+    # assert header_map[REF1MOD3_INDEX] == 'ref_onemod3'
+    # assert header_map[REF2MOD3_INDEX] == 'ref_twomod3'
+    # assert header_map[ALT1INS_INDEX] == 'alt_1ins'
+    # assert header_map[ALT1MOD3_INDEX] == 'alt_onemod3'
+    # assert header_map[ALT2MOD3_INDEX] == 'alt_twomod3'
+
+    REF_INDEX = 'ref'
+    ALT_INDEX = 'alt'
+    REF1MOD3_INDEX = 'ref_onemod3'
+    REF2MOD3_INDEX = 'ref_twomod3'
+    ALT1INS_INDEX = 'alt_1ins'
+    ALT1MOD3_INDEX = 'alt_onemod3'
+    ALT2MOD3_INDEX = 'alt_twomod3'
 
     # FREQUENCIES
-    try:
-        ref_onemod3_mean = tabix_results_df[REF1MOD3_INDEX].astype(
-            float).mean()*100
-        ref_twomod3_mean = tabix_results_df[REF2MOD3_INDEX].astype(
-            float).mean()*100
-    except:
-        ref_onemod3_mean = tabix_results_df['ref_onemod3'].astype(
-            float).mean()*100
-        ref_twomod3_mean = tabix_results_df['ref_twomod3'].astype(
-            float).mean()*100
+    ref_onemod3_mean = tabix_results_df[REF1MOD3_INDEX].astype(
+        float).mean()*100
+    ref_twomod3_mean = tabix_results_df[REF2MOD3_INDEX].astype(
+        float).mean()*100
     no_frameshift = 100 - (ref_onemod3_mean+ref_twomod3_mean)
 
     # VALUE COUNTS
-    try:
-        snp_value_counts = tabix_results_df.value_counts(
-            subset=[REF_INDEX, ALT_INDEX], sort=False)
-    except:
-        snp_value_counts = tabix_results_df.value_counts(
-            subset=['ref', 'alt'], sort=False)
+    snp_value_counts = tabix_results_df.value_counts(
+        subset=[REF_INDEX, ALT_INDEX], sort=False)
     # to get index (columns): snp_value_counts.index[0], e.g.g ('A', 'C')
     # to get value (row): snp_value_counts.get(0): 135
-    try: 
-        snp_value_counts_inx = snp_value_counts.index.drop(('.', '.')) # for new files, no change contains '.' if no change
-    except:
-        snp_value_counts_inx = snp_value_counts.index
     matrix = [[0, 0, 0, 0] for i in range(4)]
     n_lst = ['A', 'C', 'G', 'T']
     # for stacked bar plot it's better to have "to" mutation, so
     # matrix is a list of toA, toC, toG and toT lists
-    for i, tpl in enumerate(snp_value_counts_inx):
+    for i, tpl in enumerate(snp_value_counts.index):
         matrix[n_lst.index(tpl[1])][n_lst.index(tpl[0])
                                     ] = snp_value_counts.get(i)
 
@@ -257,54 +208,30 @@ def build_response_json(tabix_results_df, header_map):
         tabix_results_df, header_map=header_map, filter_keys=filter_keys)
 
     # TableSummary
-    print(settings.TEST_ECDF_FILE)
     ts = TableSummary(settings.TEST_ECDF_FILE, header_map)
+
     # print(ts.get_table_summary(predictions_list))
     summary_dict = ts.get_summary(predictions_list)
 
-    try:
-        response = {
-            'summary':  summary_dict,
-            'stats': {
-                'freq': {'ref_onemod3_mean': ref_onemod3_mean,
-                        'ref_twomod3_mean': ref_twomod3_mean,
-                        'no_frameshift': no_frameshift},
-                'snp': {'toA': matrix[0],
-                        'toC': matrix[1],
-                        'toG': matrix[2],
-                        'toT': matrix[3]},
-                'histograms': {
-                    'alt1ins': list((tabix_results_df[ALT1INS_INDEX].astype(float)*100).round(2)),
-                    'alt1mod3': list((tabix_results_df[ALT1MOD3_INDEX].astype(float)*100).round(2)),
-                    'alt2mod3': list((tabix_results_df[ALT2MOD3_INDEX].astype(float)*100).round(2)),
-                },
+    response = {
+        'summary':  summary_dict,
+        'stats': {
+            'freq': {'ref_onemod3_mean': ref_onemod3_mean,
+                     'ref_twomod3_mean': ref_twomod3_mean,
+                     'no_frameshift': no_frameshift},
+            'snp': {'toA': matrix[0],
+                    'toC': matrix[1],
+                    'toG': matrix[2],
+                    'toT': matrix[3]},
+            'histograms': {
+                'alt1ins': list((tabix_results_df[ALT1INS_INDEX].astype(float)*100).round(2)),
+                'alt1mod3': list((tabix_results_df[ALT1MOD3_INDEX].astype(float)*100).round(2)),
+                'alt2mod3': list((tabix_results_df[ALT2MOD3_INDEX].astype(float)*100).round(2)),
             },
-            'results': {
-                'total': results_len,
-                'predictions': [] if results_len == 0 else predictions_list
-            }
+        },
+        'results': {
+            'total': results_len,
+            'predictions': [] if results_len == 0 else predictions_list
         }
-    except:
-        response = {
-            'summary':  summary_dict,
-            'stats': {
-                'freq': {'ref_onemod3_mean': ref_onemod3_mean,
-                        'ref_twomod3_mean': ref_twomod3_mean,
-                        'no_frameshift': no_frameshift},
-                'snp': {'toA': matrix[0],
-                        'toC': matrix[1],
-                        'toG': matrix[2],
-                        'toT': matrix[3]},
-                'histograms': {
-                    'alt1ins': list((tabix_results_df['alt_1ins'].astype(float)*100).round(2)),
-                    'alt1mod3': list((tabix_results_df['alt_onemod3'].astype(float)*100).round(2)),
-                    'alt2mod3': list((tabix_results_df['alt_twomod3'].astype(float)*100).round(2)),
-                },
-            },
-            'results': {
-                'total': results_len,
-                'predictions': [] if results_len == 0 else predictions_list
-            }
-        }
-
+    }
     return response
