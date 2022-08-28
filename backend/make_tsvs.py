@@ -48,8 +48,8 @@ def one_hot_encode(seq, base_map):
         base_map[2] --> [0, 0, 1, 0]
         base_map[3] --> [0, 0, 0, 1]
     
-    Yield
-    -----
+    Returns
+    -------
     One hot encoded 4 by n array where n = len(seq)
 
     '''

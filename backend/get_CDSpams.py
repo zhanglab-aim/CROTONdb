@@ -3,25 +3,24 @@ Get all PAM sites in the coding region (by chrom) then intersect with .vcf files
 VRL
     - Created May 2021? 
     - Edited 072221
+
+FZZ
+    - 20220827: sweep hard-coded paths; speed-up appending dfs
+    - 20220828: fix missing 1st nt on CDS regions; add ref seq to acomodate new data structure
 '''
 
 import gffutils
 import pandas as pd
 import numpy as np
+import os
 import json
 from pyfaidx import Fasta
-import matplotlib.pyplot as plt
-import seaborn as sns
-import bisect
 import intervaltree
 from tqdm import tqdm
 
-pam_df_path = './datavl/df/pam_df.csv'
-genome_path = './data/data/genome/GRCh38.primary_assembly.genome.fa' #/mnt/ceph/users/zzhang/human_SNP/Gnomad_V2_Exomes_hg38_liftover/gnomad.exomes.r2.1.1.sites.liftover_grch38.vcf.gz
-CDSpamsbed_path = './datavl/variant/CDSpams.bed'
-db_path = '/mnt/ceph/users/zzhang/decan/data/genomes/gencode/gencode.v35.annotation.gff3.gz.decan_db'
-db = gffutils.FeatureDB(db_path)
-gn_dict = {g.attributes['gene_name'][0]: g.id for g in db.features_of_type('gene')}
+# keeps data objects in memory
+cached = {}
+
 
 CDSpamsbyChrom_dir = './datavl/variant/CDSpams-byChrom/'
 
@@ -30,21 +29,28 @@ CDSpamsbyChrom_dir = './datavl/variant/CDSpams-byChrom/'
 #######################
 # Contains columns: 'genename', 'chrom', 'start', 'end', 'strand', 'seq', 'pams', 'rc_pams'
 
-def get_CDS_df():
+def get_CDS_df(db_path, save_path=None):
     """
-    Yields
+    Returns
     ------
     Dataframe with 'genename', 'chrom', 'start', 'end, 'strand' columns for all CDS detected in db
     - Save at pam_df_path defined at top of the file
     """
-    global db
+    global cached
+    db_path = os.path.realpath(db_path)
+    if db_path in cached:
+        db = cached[db_path]
+    else:
+        print("reading gtf_db..")
+        db = gffutils.FeatureDB(db_path)
+        cached[db_path] = db
     CDS_feature_lst = list(db.all_features(featuretype='CDS')) #774993
     genenames, chroms, starts, ends, strands = [], [], [], [], []
-    for inx in range(len(CDS_feature_lst)):
+    for inx in tqdm(range(len(CDS_feature_lst))):
         feature = CDS_feature_lst[inx].astuple()
         genename = json.loads(feature[9])['gene_name'][0]
         chrom = feature[1]
-        start = feature[4]
+        start = feature[4] - 1 ## Fixed 20220828; BED files are off by 1bp at start. FZZ
         end = feature[5]
         strand = feature[7]
         genenames.append(genename)
@@ -56,13 +62,15 @@ def get_CDS_df():
     features_dict = {'genename':genenames, 'chrom':chroms, 'start': starts, 'end': ends, 'strand': strands}
 
     df = pd.DataFrame(features_dict)
-    df.to_csv(pam_df_path, index=False)
+    if save_path is not None:
+        df.to_csv(save_path, index=False)
+    return df
 
-def get_seq(): 
+def get_CDS_seq(df, genome_path, save_path=None):
     """
-    Add 'seq' column to pam_df by using 'start', 'end', 'chrom' columns + pyfaidx
+    Add 'seq' column to cds_df by using 'start', 'end', 'chrom' columns + pyfaidx
     """
-    df = pd.read_csv(pam_df_path)
+    global cached
     
     # Only keep chr1-22, chrX, CDS in pam_df
     #chrom_lst = ['chrX', 'chrY'] 
@@ -71,11 +79,16 @@ def get_seq():
     df = df.loc[df['chrom'].isin(chrom_lst)] #774980
 
     # Get sequences and add to dataframe
-    genome = Fasta(genome_path)
+    genome_path = os.path.realpath(genome_path)
+    if genome_path in cached:
+        genome = cached[genome_path]
+    else:
+        genome = Fasta(genome_path)
+        cached[genome_path] = genome
     seqs = []
-    for i in range(len(df)):
+    for i in tqdm(range(len(df))):
         chrom = df['chrom'].iloc[i]
-        start = df['start'].iloc[i] - 1
+        start = df['start'].iloc[i]
         end = df['end'].iloc[i]
         if df['strand'].iloc[i] == '+':
             seq = genome[chrom][start:end].seq
@@ -83,7 +96,9 @@ def get_seq():
             seq = genome[chrom][start:end].reverse.complement.seq
         seqs.append(seq)
     df['seq'] = seqs
-    df.to_csv(pam_df_path, index=False)
+    if save_path is not None:
+        df.to_csv(save_path, index=False)
+    return df
 
 # add PAM columns to pam_df.csv
 
@@ -116,8 +131,8 @@ def find_pam_coords(seq, start, end):
     end: int
         End coordinate of sequence
     
-    Yields
-    ------
+    Returns
+    -------
     (List of coords of pams on 'seq', List of coords of pams on reverse complement of 'seq')
         - Pam coordinates correspond with the 'N' of 'NGG'
     
@@ -146,29 +161,29 @@ def find_pam_coords(seq, start, end):
 
     return coords, rc_coords
 
-def get_pam_coords():
+def get_PAM_coords(df, save_path=None):
     """
     Add columns ['pams', 'rc_pams']  to pam_df by using find_pam_coords function [rc = rverse complement]
         - Columns contain lists (in str form) of indices of pams ('N' of 'NGG')
     
-    Yields 
-    ------
+    Returns
+    -------
         Final pam_df with columns ['genename', 'chrom', 'start', 'end', 'strand', 'seq', 'pams', 'rc_pams']
     
     Example
     -------
-    >>> First three rows --> 
+    >>> First few rows, note how ATG starts each gene  --> 
          genename chrom start   end strand                       seq                     pams                  rc_pams
-            OR4F5  chr1 65565 65573      +                  TGAAGAAG                       []                       []
-            OR4F5  chr1 69037 70008      +  TAACTGCAGAGGCTATTTCCT...  [69046, 69130, 69176...  [69909, 69881, 69847...
-            OR4F5  chr1 69091 70008      +  TGGTGACTGAATTCATTTTTC...  [69130, 69176, 69352...  [69909, 69881, 69847...
+         OR4F5 	chr1 	65564 	65573 	+ 	                ATGAAGAAG 	                   [] 	                    []
+         OR4F5 	chr1 	69036 	70008 	+ 	GTAACTGCAGAGGCTATTTCC... 	[69046, 69130, 69176... 	[69909, 69881, 69847...
+         OR4F5 	chr1 	69090 	70008 	+ 	ATGGTGACTGAATTCATTTTT... 	[69130, 69176, 69352... 	[69909, 69881, 69847...
+         OR4F29 	chr1 	450739 	451678 	- 	ATGGATGGAGAGAAT... 	    [450838, 450889, 450935... 	[451466, 451394, 450989...
     """
-    df = pd.read_csv(pam_df_path)
     df['pams'] = np.nan
     df['rc_pams'] = np.nan
     df['pams'] = df['pams'].astype('object') # so list can be saved to df
     df['rc_pams'] = df['rc_pams'].astype('object')
-    for i in range(len(df)):
+    for i in tqdm(range(len(df))):
         seq = df['seq'].iloc[i]
         start = df['start'].iloc[i] 
         end = df['end'].iloc[i]
@@ -178,15 +193,16 @@ def get_pam_coords():
             else: coords, rc_coords = find_pam_coords(reverse_complement(seq), start, end) # WAS A TYPO HERE coord instead of coords
             df.at[i, 'pams'] = coords 
             df.at[i, 'rc_pams'] = rc_coords
-    
-    df.to_csv(pam_df_path, index=False)
+    if save_path is not None:
+        df.to_csv(save_path, index=False)
+    return df
 
 ########################
 ### Make CDSpams.bed ###
 ########################
 #pd.set_option("max_rows", None)
 
-def make_CDSpamsbed():
+def make_CDSpamsbed(pam_df, pam_left=33, pam_right=27, save_path=None):
     """
     Take pam_df, drop nan for rows that start and end with nan; drop rows w/o any pams
     
@@ -202,7 +218,8 @@ def make_CDSpamsbed():
     
     Returns
     ------
-    The file CDSpam.bed at CDSpamsbed_path defined at top of this script
+    panda.dataframe: CDSpam.bed at CDSpamsbed_path defined at top of this script
+    list: skipped genes with non-unique chromosome
     
     Example 
     -------
@@ -215,25 +232,22 @@ def make_CDSpamsbed():
         69079     69139      +  1    OR4F5    5   OR4F5|5
     """
     
-    pam_df = pd.read_csv(pam_df_path).dropna() # 394 all start & end with nan
+    #pam_df = pd.read_csv(pam_df_path).dropna() # 394 all start & end with nan
+    pam_df = pam_df.dropna()
     pam_df = pam_df[(pam_df['pams'] != '[]') | (pam_df['rc_pams'] != '[]')].reset_index(drop=True) #12033 rows
     pam_df = pam_df[pam_df['chrom']!='chrY']
     CDSpams_chr, CDSpams_gn, CDSpams_num = [], [], []
-    CDSpamsbed_df = pd.DataFrame()
-    #genome = Fasta(genome_path)
     
     skipped_genes = []
+    tmp = []
     for genename in tqdm(list(pam_df['genename'].unique())):
         gn_start, gn_end, gn_strand, gn_pam = [], [], [], [] 
-        #gn_seq = []
-        pam_df_gn = pam_df[pam_df['genename'] == genename]
+        pam_df_gn = pam_df.query(f'genename=="{genename}"')
         if not len(pam_df_gn['chrom'].unique()) == 1:
             skipped_genes.append(genename)
             continue
-        pam_lst = list(set([a for b in pam_df_gn['pams'].str.strip('][').str.split(', ') for a in b])) # different rows for the same gene have overlapping ranges
-        rc_pam_lst = list(set([a for b in pam_df_gn['rc_pams'].str.strip('][').str.split(', ') for a in b]))
-        if '' in pam_lst: pam_lst.remove('')
-        if '' in rc_pam_lst: rc_pam_lst.remove('')
+        pam_lst = list(set([c for pam in pam_df_gn['pams'] for c in pam])) # different rows for the same gene have overlapping ranges
+        rc_pam_lst = list(set([c for pam in pam_df_gn['rc_pams'] for c in pam]))
         
         num_pams = len(pam_lst) + len(rc_pam_lst)
         chrom = pam_df_gn['chrom'].iloc[0]
@@ -246,74 +260,88 @@ def make_CDSpamsbed():
 
         for pam in rc_pam_lst: # '-' cases have a lower ID number because PAM on the left side of the cutsite
             pam = int(pam)
-            start = pam - 27
-            end = pam + 33
+            start = pam - pam_right
+            end = pam + pam_left
             gn_start.append(start)
             gn_end.append(end)
             gn_strand.append('-')
-            #seq = genome[chrom][start:end].reverse.complement.seq
-            #gn_seq.append(seq)
         
         for pam in pam_lst:
             pam = int(pam)
-            start = pam - 33
-            end = pam + 27
+            start = pam - pam_left
+            end = pam + pam_right
             gn_start.append(start)
             gn_end.append(end)
             gn_strand.append('+')
-            #seq = genome[chrom][start:end].seq
-            #gn_seq.append(seq)
         
         gene_dict = {'start':gn_start, 'end':gn_end, 'strand':gn_strand} # , 'pam':pam_lst + rc_pam_lst, 'seq':gn_seq
         gene_df = pd.DataFrame(gene_dict).sort_values(by='start')
-        CDSpamsbed_df = CDSpamsbed_df.append(gene_df)
-
+        tmp.append(gene_df)
+        #CDSpamsbed_df = CDSpamsbed_df.append(gene_df)
+    CDSpamsbed_df = pd.concat(tmp)
+    CDSpamsbed_df['start'] = CDSpamsbed_df['start'].astype(int)
+    CDSpamsbed_df['end'] = CDSpamsbed_df['end'].astype(int)
     CDSpamsbed_df['#'] = CDSpams_chr
     CDSpamsbed_df['#'] = CDSpamsbed_df['#'].str.replace('chr', '')
     CDSpamsbed_df['genename'] = CDSpams_gn
     CDSpamsbed_df['num'] = CDSpams_num
     CDSpamsbed_df['pamid'] = CDSpamsbed_df['genename'] + '|' + CDSpamsbed_df['num'].astype(str)
     
-    #print(CDSpamsbed_df.shape)
-    print(skipped_genes)
-    CDSpamsbed_df.to_csv(CDSpamsbed_path, index=False, sep='\t') #5368021 rows x 7 columns
+    print("processed PAMs in CDS:", CDSpamsbed_df.shape)
+    print("skipped genes:", skipped_genes)
+    if save_path is not None:
+        CDSpamsbed_df.to_csv(save_path, index=False, sep='\t') #5368021 rows x 7 columns
+    return CDSpamsbed_df, skipped_genes
 
-#make_CDSpamsbed()
+
+def get_ref_PAM_seq(df, genome_path, save_path=None):
+    global cache
+    # Get sequences and add to dataframe
+    genome_path = os.path.realpath(genome_path)
+    if genome_path in cached:
+        genome = cached[genome_path]
+    else:
+        genome = Fasta(genome_path)
+        cached[genome_path] = genome
+    seqs = []
+    for i in tqdm(range(df.shape[0])):
+        chrom = f"chr{df['#'].iloc[i]}" # exists for novar
+        start = df['start'].iloc[i] # exists for novar
+        end = df['end'].iloc[i] # exists for novar
+        # get seq
+        seq = genome[chrom][start:end]
+        if df['strand'].iloc[i] == '-':
+            ref_seq = seq.reverse.complement.seq
+        else: ref_seq = seq.seq
+        seqs.append(ref_seq)
+    df['ref_seq'] = seqs
+    if save_path is not None:
+        df.to_csv(save_path, index=False, sep='\t')
+    return df
+
 
 ##################################
 ## Make X.bed, 1.bed, 2.bed ... ##
 ##################################
 
-def subset_CDSpams(): 
+def subset_CDSpams(CDSpamsbed_df, save_path, chrom_type='number'):
     '''
     Make X.bed, 1.bed, 2.bed ... in CDSpamsbyChrom_dir by taking subsets of CDSpams.bed
     '''
-    CDSpamsbed_df = pd.read_csv(CDSpamsbed_path, sep='\t')
-    chrom_lst = ['X'] # ['X', 'Y']
+    assert chrom_type in ('number', 'string')
+    chrom_lst = ['X']
     for i in range(22): chrom_lst.append(str(i+1))
     for chrom in chrom_lst:
         print(chrom)
         chrom_df = CDSpamsbed_df[CDSpamsbed_df['#'].astype(str) == chrom] # before some of chrom22 has integer 22 as a col value
-        chrom_df = chrom_df[['#', 'start', 'end', 'strand', 'pamid', 'genename', 'num']]
-        chrom_df['#'] = 'chr' + chrom_df['#'].astype(str) # add 'chr' to chromosome '#' column
-        chrom_df.to_csv(CDSpamsbyChrom_dir + '%s.bed' % (str(chrom)), sep='\t', index=False)
-
-#subset_CDSpams()
-
-if __name__ == "__main__":
-    # Make pam_df.csv
-    print('Get df')
-    get_CDS_df()
-    print('Get seq')
-    get_seq()
-    print('Get pam coords')
-    get_pam_coords()
-
-    # Make CDSpams.bed
-    print('Make CDSpamsbed')
-    make_CDSpamsbed()
-    print('Subset CDSpams')
-    subset_CDSpams()
+        chrom_df = chrom_df[['#', 'start', 'end', 'strand', 'pamid', 'genename', 'num', 'ref_seq']]
+        if chrom_type == 'number':
+            pass
+        elif chrom_type == 'string':
+            chrom_df['#'] = 'chr' + chrom_df['#'].astype(str) # add 'chr' to chromosome '#' column
+        else:
+            raise ValueError("unkown chrom_type=%s" % chrom_type)
+        chrom_df.to_csv(save_path+ '%s.bed' % (str(chrom)), sep='\t', index=False)
 
 ################################################################
 ## Make X.intersect.bed, 1.intersect.bed, 2.intersect.bed ... ##
@@ -349,11 +377,11 @@ $ for i in X Y; do echo $i; echo "##fileformat=VCFv4.2" | cat - /mnt/ceph/users/
 ## function to get CDS for specific gene ##
 ###########################################
 
-def get_CDS_for_gene(genename):
-    """
-    
+def get_CDS_for_gene(db_path, genename):
+    """use interval tree to merge overlapping CDS regions, and return the merged regions for a gene
     """
     global db, gn_dict
+    gn_dict = {g.attributes['gene_name'][0]: g.id for g in db.features_of_type('gene')}
     gid = gn_dict[genename]
     gene = db[gid]
     order_by = 'start' if gene.strand == '+' else 'end'
@@ -369,5 +397,20 @@ def get_CDS_for_gene(genename):
     cds_array = sorted([x.begin if gene.strand=='+' else x.end for x in it])
     return cds_array
 
-#pam_df = pd.read_csv(pam_df_path, nrows=100).dropna()
-#print(pam_df)
+'''
+if __name__ == "__main__":
+    # Make pam_df.csv
+    print('Get df')
+    get_CDS_df()
+    print('Get seq')
+    get_CDS_seq()
+    print('Get pam coords')
+    get_PAM_coords()
+
+    # Make CDSpams.bed
+    print('Make CDSpamsbed')
+    make_CDSpamsbed()
+    print('Subset CDSpams')
+    subset_CDSpams()
+'''
+

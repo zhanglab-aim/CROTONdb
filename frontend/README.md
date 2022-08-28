@@ -1,5 +1,8 @@
 # croton_project #
 
+### Frank Z's notes on setup locally:
+https://docs.google.com/document/d/1MutYp9srTwuRd7CMUcUGrICYYkCxuJfac9IFzXjvuwY/edit
+
 ### To use this project follow these steps: ###
 
 * Check the project requirements (python3, etc)
