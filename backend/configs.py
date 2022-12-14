@@ -3,8 +3,14 @@ import os
 LOCAL_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = f"{LOCAL_DIR}/../frontend/data"
 
-GENOME_FA_PATH = f"{DATA_DIR}/genomes/GRCh38.primary_assembly.genome.fa"
-GTF_DB_PATH = f"{DATA_DIR}/genomes/gencode.v35.annotation.gff3.gz.gtf_sqldb"
+# GENOME_FA_PATH = f"{DATA_DIR}/genomes/GRCh38.primary_assembly.genome.fa"
+# GTF_DB_PATH = f"{DATA_DIR}/genomes/gencode.v35.annotation.gff3.gz.gtf_sqldb"
+
+GENOME_FA_PATH = f"{DATA_DIR}/genomes/Small_Test_Genome.all.fa"
+GTF_DB_PATH = f"{DATA_DIR}/genomes/Small_Test_Genome.CROTONTest.gff3.gtf_sqldb"
+ 
+
+
 CDS_PAM_DIR = f"{DATA_DIR}/bed/CDSpams-byChrom/"
 
 GNOMAD_AF_ENTRIES = ['AF', 'AF_male', 'AF_female', 'AF_afr', 'AF_afr_female', 'AF_afr_male', 'AF_amr', 'AF_amr_female', 'AF_amr_male',
