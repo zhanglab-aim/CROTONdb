@@ -10,6 +10,7 @@ from tensorflow.python.keras.models import load_model
 import numpy as np
 import os
 import argparse
+import configs
 
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 

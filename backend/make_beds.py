@@ -12,13 +12,13 @@ import argparse
 import os
 import numpy as np
 from tqdm import tqdm
-from . import configs
-
+import configs
 
 ################
 ### Get beds ###
 ################
 #gen or ccb
+
 
 def make_BEDdirs():
     """
@@ -32,6 +32,7 @@ def make_BEDdirs():
         if not os.path.exists(bedchr_path): # if path does not exist, create directory
             os.makedirs(bedchr_path)
             #print(bedchr_path)
+
 
 def get_GENE_beds(chrom):
     """

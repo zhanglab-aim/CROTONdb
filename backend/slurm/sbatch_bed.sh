@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 #SBATCH --time=2-1
-#SBATCH --partition=gen
+#SBATCH --partition=defq
 
-cd /mnt/ceph/users/vli/croton
-export PYTHONPATH="."
+cd /home/lingj/zhanglab/jling/CROTONdb/backend
+#export PYTHONPATH="."
 
-python -u ./src/variant/make_beds.py --lstinx 7
+for i in `seq 1 12`; do echo $i; python make_beds.py --chrom $i; done 
+
+#python -u make_beds.py --lstinx 7
