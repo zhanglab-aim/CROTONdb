@@ -1,0 +1,9 @@
+"chr","ensembl","type","start","end","strand","exon_number"
+"chr18","ensembl_havana","CDS",31591903,31591971,"+",1
+"chr18","ensembl_havana","start_codon",31591903,31591905,"+",1
+"chr18","ensembl_havana","exon",31592896,31593026,"+",2
+"chr18","ensembl_havana","CDS",31592896,31593026,"+",2
+"chr18","ensembl_havana","exon",31595120,31595255,"+",3
+"chr18","ensembl_havana","CDS",31595120,31595255,"+",3
+"chr18","ensembl_havana","exon",31598568,31598821,"+",4
+"chr18","ensembl_havana","CDS",31598568,31598672,"+",4
