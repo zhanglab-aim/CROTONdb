@@ -183,7 +183,8 @@ def get_CD33_plts():
     # CD33_refvsalt_bars(cd33_df)
     # print(get_altgRNAs(pd.read_csv("data/CD33.csv")))
     # print(get_altgRNAs(cd33_df))
-get_CD33_plts()
+# get_CD33_plts()
+
 ##########
 ## TTR ##
 ##########
@@ -200,7 +201,7 @@ def get_overlap(x1, x2, y1, y2):
     else:
         return 0
 
-def TTR_fs_genewide(ttr_df): 
+def TTR_fs_genewide(ttr_df, get_better_candidate_stats=False): 
     # NOTE: prev version: https://github.com/zj-zhang/CROTON-dev/blob/master/src/variant/plt_variant.py
 
     ttr_df[["Gene", "PAM Index"]] = ttr_df["PAM ID"].str.split("|", expand=True)
@@ -236,12 +237,22 @@ def TTR_fs_genewide(ttr_df):
             exons_lst.append("E4")
         else:
             exons_lst.append(np.nan)
-    
+        
     plt_df["Exonic Region"] = exons_lst
     plt_df = plt_df.dropna()
     plt_df["PAM Index"] = plt_df["PAM Index"].astype(int)
     plt_df = plt_df.sort_values(by = "PAM Index")
 
+    ## GET STATS FOR BETTER TARGETS
+    if get_better_candidate_stats: 
+        plt_df["FS Variant Effect"] = plt_df["Alt. Frameshift"] - plt_df["Ref. Frameshift"]
+        maxvar_df = plt_df.loc[plt_df.groupby("PAM Index")["FS Variant Effect"].idxmax()]
+        # "TTR|24" is the targeted PAM Index in the paper
+        vareffect_threshold = maxvar_df[maxvar_df["PAM Index"] == 24]["FS Variant Effect"].values[0]
+        fs_threshold = maxvar_df[maxvar_df["PAM Index"] == 24]["Ref. Frameshift"].values[0]
+        maxvar_df = maxvar_df.loc[(maxvar_df["FS Variant Effect"] < vareffect_threshold) & (maxvar_df["Ref. Frameshift"] > fs_threshold)]
+        maxvar_df.to_csv("./betterTTRcandidates.csv")
+    
     # Create and stylize plot
     plt.figure(figsize = (16, 6))
     sns.set(style = "whitegrid")
@@ -249,19 +260,19 @@ def TTR_fs_genewide(ttr_df):
                     showfliers = False, linewidth = 3, color = 'black')
     ax = sns.stripplot(x = "PAM Index", y = "Alt. Frameshift", hue = "Exonic Region", 
                     data = plt_df, marker = 'o', linewidth = 0.5, size = 6) 
-    plt.show()
-    # for spine in ["right", "top", "left", "bottom"]:
-    #     ax.spines[spine].set_visible(False)
-    # plt.ylabel("Frameshift Frequency", fontsize = MEDIUM_SIZE)
-    # plt.setp(ax.get_xticklabels(), visible = False)
-    # plt.tick_params(labelsize = MEDIUM_SIZE - 2)
-    # legend = plt.legend(title = "Exonic Region", bbox_to_anchor=(1.01, 1), 
-    #          fontsize = MEDIUM_SIZE, ncol = 2, columnspacing = 0.6, 
-    #          borderaxespad = 0., handletextpad = 0.1)
-    # plt.setp(legend.get_title(), fontsize = MEDIUM_SIZE)
-    # plt.savefig('images/TTR_fs_genewide.png', bbox_inches='tight', dpi = 350)
+    # plt.show()
+    for spine in ["right", "top", "left", "bottom"]:
+        ax.spines[spine].set_visible(False)
+    plt.ylabel("Frameshift Frequency", fontsize = MEDIUM_SIZE)
+    plt.setp(ax.get_xticklabels(), visible = False)
+    plt.tick_params(labelsize = MEDIUM_SIZE - 2)
+    legend = plt.legend(title = "Exonic Region", bbox_to_anchor=(1.01, 1), 
+             fontsize = MEDIUM_SIZE, ncol = 2, columnspacing = 0.6, 
+             borderaxespad = 0., handletextpad = 0.1)
+    plt.setp(legend.get_title(), fontsize = MEDIUM_SIZE)
+    plt.savefig('images/TTR_fs_genewide.png', bbox_inches='tight', dpi = 350)
 
-    # plt.close()
+    plt.close()
 
 # ------------------------------------------------------------------------------
 # ? Zoom into predisposed variant
@@ -306,13 +317,13 @@ def better_TTR_candidates(ttr_df):
 
 # ------------------------------------------------------------------------------
 def get_TTR_plts():
-    ttr_df = filter_PAM_distrupt_vars(pd.read_csv("data/TTR.csv"))
-    # TTR_fs_genewide(ttr_df)
+    ttr_df = filter_PAM_distrupt_vars(pd.read_csv("victoria-figures/data/TTR.csv"))
+    TTR_fs_genewide(ttr_df, get_better_candidate_stats=True)
     # TTR_maxvar_hist(ttr_df)
     # TTR_maxvar_fs(ttr_df)
-    better_TTR_candidates(ttr_df)
+    # better_TTR_candidates(ttr_df)
 
-# get_TTR_plts()
+get_TTR_plts()
 # ------------------------------------------------------------------------------
 # get_CD33_plts()
 # get_TTR_plts()
