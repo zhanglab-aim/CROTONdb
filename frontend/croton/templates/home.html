@@ -430,7 +430,13 @@
                 {
                     "targets": [13],
                     render: function (data, type, row) {
-                        return row["ref_seq"] + "<br/>" + row["alt_seq"];
+                        var ref_seq = row["ref_seq"].substr(0, row["diff_idx"]) + 
+                            '<span style="color: red;">' + row["ref_seq"].substr(row["diff_idx"], 1) + 
+                            '</span>' + row["ref_seq"].slice(row["diff_idx"]+1)
+                        var alt_seq = row["alt_seq"].substr(0, row["diff_idx"]) + 
+                            '<span style="color: red;">' + row["alt_seq"].substr(row["diff_idx"], 1) + 
+                            '</span>' + row["alt_seq"].slice(row["diff_idx"]+1)
+                        return ref_seq + "<br/>" + alt_seq;
                     }
                 }
             ],
