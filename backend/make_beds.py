@@ -45,8 +45,11 @@ def get_GENE_beds(chrom):
     chrom = str(chrom)
     print('Making bed files for chr' + chrom)
     novar_name = []
-    bed_df = pd.read_csv(configs.CDS_PAM_DIR +'/%s.intersect.bed' % (chrom), sep='\t', 
-        names=['chrom', 'start', 'end', 'strand', 'pamid', 'genename', 'num', 'chrom_', 'pos', 'varid', 'ref', 'alt', '.', '..', 'AF_info']) 
+    # bed_df = pd.read_csv(configs.CDS_PAM_DIR +'/%s.intersect.bed' % (chrom), sep='\t', 
+        # names=['chrom', 'start', 'end', 'strand', 'pamid', 'genename', 'num', 'chrom_', 'pos', 'varid', 'ref', 'alt', '.', '..', 'AF_info']) 
+    bed_df = pd.read_csv(os.path.join(configs.CDS_PAM_DIR, f"{chrom}.intersect.bed"), sep='\t', 
+                         names=['chrom', 'start', 'end', 'strand', 'pamid', 'genename', 'num', 'chrom_', 'chrom2', 'pos',  
+                                'varid', 'ref', 'alt', '.', '..', 'AF_info'], index_col=False)
     print('Loaded intersect.bed!')
     genenames_chrom = sorted(bed_df['genename'].unique().tolist())
     for genename in tqdm(genenames_chrom):
@@ -65,14 +68,17 @@ def get_GENE_beds(chrom):
     #print(novar_name)
     return novar_name
 
-'''
+
 if __name__ == "__main__": # see sbatch_bed.sh
     parser = argparse.ArgumentParser(description='Making beds')
     parser.add_argument('--chrom', help='Chromosome with which to make beds')
     args = parser.parse_args()
-    make_beddirs()
-    get_beds(chrom=args.chrom)
-'''
+    # make_beddirs()
+    make_BEDdirs()
+    # get_beds(chrom=args.chrom)
+    get_GENE_beds(chrom=args.chrom)
+
+
 def get_beds_before(lstinx, num=8):
     """
     Get all genenames with pams from pam_df, sort genenames, and then make [genename].bed files

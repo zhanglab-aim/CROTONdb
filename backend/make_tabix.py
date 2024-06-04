@@ -9,10 +9,11 @@ import logging
 import pandas as pd
 import argparse
 from tqdm import tqdm
+import configs
 
 logger = logging.getLogger(__name__)
-tabix_dir = './datavl/variant/tabix'
-tsv_dir = './datavl/variant/tsv'
+tabix_dir = configs.TABIX_DIR
+tsv_dir = configs.TSV_DIR
 
 def make_tabixdirs():
     """
@@ -30,13 +31,17 @@ def make_tabixdirs():
 def combine_tsvs(chrom): # runs on subset of list of chromosomes by lstinx and num
     chrom = str(chrom)
     tsv_fp_lst = [os.path.join(path, name) for path, subdirs, files in os.walk(tsv_dir + '/%s'%(chrom)) for name in files]
+    print(len(tsv_fp_lst))
     master_df = pd.DataFrame()
+    total_lines = 0
     for fp in tsv_fp_lst:
         df = pd.read_csv(fp, sep='\t')
+        total_lines += len(df)
         master_df = pd.concat([df, master_df]) ##chrom\tpos\tref\talt
     print('Successfully finished loop for chr%s!'%(chrom))
     master_df = master_df.rename(columns={'chrom':'#chrom', 'varid':'id'})
     master_df = master_df.sort_values(by=['#chrom', 'pos'])
+    print(len(master_df), total_lines)
     
     # chrom  pamid   start   end     strand  pos     id      ref     alt     AF_info ref_seq alt_seq ref_preds       alt_preds       abs_diffs       abs_diff
     # master_df = master_df[['chrom', 'pos', 'varid', 'ref', 'alt', 'pamid', 'genename', 'num', 'start', 'end', 
