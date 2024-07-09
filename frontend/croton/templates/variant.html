@@ -19,26 +19,208 @@
                         <dd id="variantId" class="col-sm-10"></dd>
                         <dt class="col-sm-2">pos:</dt>
                         <dd id="pos" class="col-sm-10"></dd>
+                        <dt class="col-sm-2">PAM ID:</dt>
+                        <dd id="pamid" class="col-sm-10"></dd>
                     </dl>
             </p>
+
+            <div id="pam_loc_plot" class="col-lg-8"></div>
+
+        <div id="plotsSection" class="row container-fluid pt-4">
+            <div id="pie_gender" class="col-lg-4"></div>
+            <div id="pie_race" class="col-lg-4"></div>
+        </div>
+
+    </div>
+
+    </div>
+
+
+    <hr class="d-none">
+    <div class="row justify-content-center">
+        <div id="no-data-warning" class="d-none col-8 col-sm-6">
+            <div class="alert alert-warning text-center" role="alert">No data found</div>
         </div>
     </div>
 
 
-    {% endblock %}
+</div>
 
-    {% block extrajs %}
-    <script type=" text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script type="text/javascript">
-        $(document).ready(function () {
-            console.log("page ready");
 
-            //read item from localStorage
-            variantData = JSON.parse(window.localStorage.getItem('variantData'));
-            console.log(variantData);
-            $('#chrom').html(variantData["chromosome"]);
-            $('#variantId').html(variantData["id"]);
-            $('#pos').html(variantData["pos"]);
-        });
-    </script>
-    {% endblock %}
+{% endblock %}
+
+{% block extrajs %}
+<script type=" text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        console.log("page ready");
+
+        //read item from localStorage
+        variantData = JSON.parse(window.localStorage.getItem('variantData'));
+        console.log(variantData);
+        $('#chrom').html(variantData["#chrom"]);
+        $('#variantId').html(variantData["id"]);
+        $('#pos').html(variantData["pos"]);
+        $('#pamid').html(variantData["pamid"]);
+
+        var trace={
+            x: [variantData["pos"]],
+            y: [variantData["abs_diff"]],
+            mode: 'markers',
+            type: 'scatter',
+            marker: {size: 12}
+        };
+
+        // Get the table
+        $.ajax({
+                url: variantData["url"],
+
+                success: function (data) {
+                    var tableData = data.results.predictions;
+
+                    var filteredData = tableData.filter(function(row) {
+                        // console.log(row.pamid, variantData["pamid"], row.pamid === variantData["pamid"])
+                        return row.pamid === variantData["pamid"];
+                    });
+
+                    console.log(filteredData)
+
+                    showPlots(filteredData, variantData);
+
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                    $('#no-data-warning').removeClass('d-none');
+                },
+            });
+
+        function showPlots(data, variantData, searchType) {
+            // Show all the variant on the same pam id
+            console.log("show scatter plot");
+
+            var posData = data.map(function(row) {
+                            return row.pos;
+                        });
+
+            var diffData = data.map(function(row) {
+                            return row.abs_diff;
+                        });
+            
+            var textData = data.map(function(row) {
+                return row.id;
+            })
+
+            var trace1={
+                x: posData,
+                y: diffData,
+                text: textData,
+                name: 'Other vairants',
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 12,
+                    color: '#D7907B'
+                }
+            }; 
+            var trace2={
+                x: [variantData["pos"]],
+                y: [variantData["abs_diff"]],
+                name: 'Current variant',
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 12,
+                    color: '#3A5683'
+                }
+            };
+            var layout = {
+                xaxis: {
+                    title: 'PAM position',
+                    automargin: true,
+                    tickvals: [
+                        parseInt(variantData["start"]),
+                        parseInt(variantData["end"])
+                    ],
+                    ticktext: [
+                        'start: ' + variantData["start"],
+                        'end: ' + variantData["end"]
+                    ],
+                },
+                yaxis: {
+                    title: 'Max difference'
+                },
+                title: 'Variant Position in PAM ID'
+            };
+
+            var plot_data = [ trace1, trace2 ];
+
+            Plotly.newPlot('pam_loc_plot', plot_data, layout);
+            }
+
+
+            // Show pie chart
+            if (variantData['AF_info'] && variantData['AF_info'] !== "{}") {
+                console.log("show pie plot");
+
+                var AF_info = JSON.parse(variantData['AF_info'].replace(/'/g, '"'))
+                for (let key in AF_info) {
+                    if (AF_info.hasOwnProperty(key)) {
+                        if (!isNaN(AF_info[key])) {
+                            AF_info[key] = parseFloat(AF_info[key]);
+                        }
+                    }
+                }
+
+                console.log(AF_info);
+
+                if (AF_info['AF'] !== 0){
+                    var pie1 = [{
+                        values: [AF_info['AF_male'], AF_info['AF_female']],
+                        labels: ['Male', 'Female'],
+                        type: 'pie'
+                    }];
+
+                    var pielayout1 = {
+                        title: "Gender Distribution"
+                    };
+
+                    Plotly.newPlot('pie_gender', pie1, pielayout1);
+
+                    var pie2values = [AF_info['AF_afr'], AF_info['AF_amr'], AF_info['AF_asj'], AF_info['AF_eas'], AF_info['AF_fin'], AF_info['AF_nfe'], AF_info['AF_oth'], AF_info['AF_sas']];
+                    var pie2total = pie2values.reduce((sum, value) => sum + value, 0);
+                    var pie2labels = ['African/African American', 'Latino/Admixed American', 'Ashkenazi Jewish', 'East Asian', 'Finnish', 'Non-Finnish European', 'Other', 'South Asian'];
+                    var pie2position = pie2values.map(value => (value > 0 && value / pie2total < 0.2) ? 'outside' : 'inside');
+
+                    var pie2 = [{
+                        values: pie2values,
+                        labels: pie2labels,
+                        type: 'pie',
+                        textposition: pie2position,
+                    }]
+
+                    var pielayout2 = {
+                        title: "Race Distribution"
+                    }
+
+                    Plotly.newPlot('pie_race', pie2, pielayout2);
+
+                    $("#plotsSection").show();
+                } else {
+                    $('#no-data-warning').removeClass('d-none');
+                    console.log('AF_info is zero');
+                }
+
+            } else {
+                $('#no-data-warning').removeClass('d-none');
+                console.log('AF_info is empty or contains an empty object');
+            }
+
+
+
+
+    });
+</script>
+<script src="https://cdn.plot.ly/plotly-2.1.0.min.js"></script>
+
+{% endblock %}
