@@ -21,25 +21,27 @@
                         <dd id="pos" class="col-sm-10"></dd>
                         <dt class="col-sm-2">PAM ID:</dt>
                         <dd id="pamid" class="col-sm-10"></dd>
+
                     </dl>
             </p>
 
-            <div id="pam_loc_plot" class="col-lg-8"></div>
+            <div id="pam_loc_plot" class="mt-4"></div>
 
-        <div id="plotsSection" class="row container-fluid pt-4">
-            <div id="pie_gender" class="col-lg-4"></div>
-            <div id="pie_race" class="col-lg-4"></div>
+            <div id="plotsSection" class="row pt-4 d-none">
+                <dt class="col-sm-2">Total allele frequency:</dt>
+                <dd id="af" class="col-sm-10"></dd>
+                <div id="eth_plot" class="col-lg-6"></div>
+                <div id="gender_plot" class="col-lg-6"></div>
+            </div>
+
         </div>
 
     </div>
 
-    </div>
-
-
     <hr class="d-none">
     <div class="row justify-content-center">
         <div id="no-data-warning" class="d-none col-8 col-sm-6">
-            <div class="alert alert-warning text-center" role="alert">No data found</div>
+            <div class="alert alert-warning text-center" role="alert">No allele frequency data found</div>
         </div>
     </div>
 
@@ -150,7 +152,7 @@
                 yaxis: {
                     title: 'Max difference'
                 },
-                title: 'Variant Position in PAM ID'
+                title: 'Variant Position in PAM ID: ' + variantData["pamid"]
             };
 
             var plot_data = [ trace1, trace2 ];
@@ -172,40 +174,44 @@
                     }
                 }
 
-                console.log(AF_info);
-
                 if (AF_info['AF'] !== 0){
-                    var pie1 = [{
+
+                    $('#af').html(AF_info['AF']);
+
+                    var gender_data = [{
                         values: [AF_info['AF_male'], AF_info['AF_female']],
                         labels: ['Male', 'Female'],
-                        type: 'pie'
+                        type: 'pie',
+                        marker:{
+                            colors: ['#D7907B', '#3A5683']
+                        }
                     }];
 
-                    var pielayout1 = {
-                        title: "Gender Distribution"
+                    var genderout = {
+                        title: "Allele Frequency Distribution by Gender"
                     };
 
-                    Plotly.newPlot('pie_gender', pie1, pielayout1);
+                    Plotly.newPlot('gender_plot', gender_data, genderout);
 
-                    var pie2values = [AF_info['AF_afr'], AF_info['AF_amr'], AF_info['AF_asj'], AF_info['AF_eas'], AF_info['AF_fin'], AF_info['AF_nfe'], AF_info['AF_oth'], AF_info['AF_sas']];
-                    var pie2total = pie2values.reduce((sum, value) => sum + value, 0);
-                    var pie2labels = ['African/African American', 'Latino/Admixed American', 'Ashkenazi Jewish', 'East Asian', 'Finnish', 'Non-Finnish European', 'Other', 'South Asian'];
-                    var pie2position = pie2values.map(value => (value > 0 && value / pie2total < 0.2) ? 'outside' : 'inside');
+                    var eth_val = [AF_info['AF_afr'], AF_info['AF_amr'], AF_info['AF_asj'], AF_info['AF_eas'], AF_info['AF_fin'], AF_info['AF_nfe'], AF_info['AF_oth'], AF_info['AF_sas']];
+                    var eth_name = ['African/African American', 'Latino/Admixed American', 'Ashkenazi Jewish', 'East Asian', 'Finnish', 'Non-Finnish European', 'Other', 'South Asian'];
 
-                    var pie2 = [{
-                        values: pie2values,
-                        labels: pie2labels,
-                        type: 'pie',
-                        textposition: pie2position,
+                    var eth_data = [{
+                        x: eth_name,
+                        y: eth_val,
+                        type: 'bar',
+                        marker: {
+                            color: '#3A5683'
+                        },
                     }]
 
-                    var pielayout2 = {
-                        title: "Race Distribution"
+                    var ethout = {
+                        title: "Allele Frequency Distribution by Ethnicity"
                     }
 
-                    Plotly.newPlot('pie_race', pie2, pielayout2);
+                    Plotly.newPlot('eth_plot', eth_data, ethout);
 
-                    $("#plotsSection").show();
+                    $("#plotsSection").removeClass('d-none').show();
                 } else {
                     $('#no-data-warning').removeClass('d-none');
                     console.log('AF_info is zero');
