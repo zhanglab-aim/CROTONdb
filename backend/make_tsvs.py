@@ -6,7 +6,8 @@ Run CROTON make tsvs
 import pandas as pd
 from pyfaidx import Fasta
 import tensorflow as tf
-from tensorflow.python.keras.models import load_model
+# from tensorflow.python.keras.models import load_model
+from tensorflow.keras.models import load_model
 import numpy as np
 import os
 import argparse
@@ -69,7 +70,42 @@ def reverse_complement(seq):
     reverse_complement = "".join(letter_match[b] for b in reversed(seq))
     return reverse_complement
 
-def get_varscore(bed_fp, model):
+def process_batch(df, model):
+    genome = Fasta(configs.GENOME_FA_PATH)
+
+    chroms = df['chrom'].values
+    starts = df['start'].values
+    ends = df['end'].values
+    poss = df['pos'].values
+    alts = df['alt'].values
+    strands = df['strand'].values
+
+    # run CROTON on ref_seq
+    seqs = [genome[f'chr{chrom}'][start:end] for chrom, start, end in zip(chroms, starts, ends)]
+    ref_seqs = [seq.reverse.complement.seq if strand == '-' else seq.seq for seq, strand in zip(seqs, strands)]
+
+    ref_ohs = np.array([one_hot_encode(ref_seq, 'ACGT').reshape((60, 4)) for ref_seq in ref_seqs])
+    ref_preds = model.predict(ref_ohs).reshape((len(ref_seqs), -1))
+
+    # run CROTON on alt_seq
+    inxs = [pos - start for pos, start in zip(poss, starts)]
+    # assert seq.seq[inx-1] == ref
+
+    alt_seqs = [seq.seq for seq in seqs]
+    alt_seqs = [seq[:inx-1] + alt + seq[inx:] for seq, inx, alt in zip(alt_seqs, inxs, alts)]
+    alt_seqs = [reverse_complement(alt_seq) if strand == '-' else alt_seq for alt_seq, strand in zip(alt_seqs, strands)]
+
+    alt_ohs = np.array([one_hot_encode(alt_seq, 'ACGT').reshape((60, 4)) for alt_seq in alt_seqs])
+    alt_preds = model.predict(alt_ohs).reshape((len(alt_seqs), -1))
+
+    abs_diffs = np.absolute(np.array(ref_preds) - np.array(alt_preds))
+    abs_diffs = np.max(abs_diffs, axis=-1)
+        
+    return ref_seqs, alt_seqs, ref_preds, alt_preds, abs_diffs
+
+
+
+def get_varscore(bed_fp, model, batch_size:int=32):
     """
     Run CROTON on 60 bp sequences in bed_df at bed_fp (in bed_dir)
     
@@ -85,73 +121,30 @@ def get_varscore(bed_fp, model):
         # to create tabix files, order must be chrom then pos
     
     # filter non-SNP
-    _snp_letter = ('A', 'C', 'G', 'T', '.', -1)
+    _snp_letter = ('A', 'C', 'G', 'T', -1)
+    # _snp_letter = ('A', 'C', 'G', 'T', '.', -1)
     df = df.loc[(df['ref'].isin(_snp_letter)) & (df['alt'].isin(_snp_letter))]
-    
-    genome = Fasta(configs.GENOME_FA_PATH)
-    ref_seqs, alt_seqs, ref_preds, alt_preds, abs_diff = [], [], [], [], []
-    
-    for i in range(len(df)): 
-        chrom = df['chrom'].iloc[i] # exists for novar
-        start = df['start'].iloc[i] # exists for novar
-        end = df['end'].iloc[i] # exists for novar
-        pos = df['pos'].iloc[i] # novar: == -1
-        ref = df['ref'].iloc[i] # novar: == '.'
-        alt = df['alt'].iloc[i] # novar: == '.'
-        
-        # run CROTON on ref_seq w/ or w/o variants
-        # seq = genome[chrom][start:end]
-        seq = genome[f'chr{chrom}'][start:end]
-        if df['strand'].iloc[i] == '-':
-            ref_seq = seq.reverse.complement.seq
-        else: ref_seq = seq.seq
-        ref_seqs.append(ref_seq)
-        
-        ref_oh = one_hot_encode(ref_seq, 'ACGT').reshape((1, 60, 4))
-        ref_pred = model.predict(ref_oh).flatten()
-        ref_preds.append(ref_pred)
+ 
+    ref_seqs, alt_seqs, ref_preds, alt_preds, abs_diffs = [], [], [], [], []
 
-        if (ref != '.'): # alternate variant cases (containing SNV)
-            inx = pos - start
-            assert seq.seq[inx-1] == ref
-            
-            # for initial analysis only focus on SNP
-            # for more complex cases, use decan cases for handling
-            if len(ref) > 1 or len(alt) > 1:
-                continue
+    num_batches = (len(df) + batch_size - 1) // batch_size
 
-            if alt == '.':
-                print(f'find deletion')
-                continue
-            
-            # fill in alternative vars
-            alt_seq = list(seq.seq)
-            alt_seq[inx-1] = alt
-            alt_seq = ''.join(alt_seq)
+    for batch_num in range(num_batches):
+        batch_df = df[batch_num * batch_size : (batch_num + 1) * batch_size]
+        ref_seq, alt_seq, ref_pred, alt_pred, abs_diff = process_batch(batch_df, model)
 
-            if df['strand'].iloc[i] == '-': alt_seq = reverse_complement(alt_seq)
-            alt_seqs.append(alt_seq)
-
-            # make alternate prediction
-            alt_oh = one_hot_encode(alt_seq, 'ACGT').reshape((1, 60, 4))
-            alt_pred = model.predict(alt_oh).flatten()
-            alt_preds.append(alt_pred)
-            
-            # get abs_diffs
-            abs_diffs = (np.absolute(np.array(ref_pred) - np.array(alt_pred))) # list of absolute differences
-            abs_diff.append(max(abs_diffs))
-        
-        else: # no variant (no SNV) cases
-            alt_seqs.append('.')
-            alt_preds.append(["{0:.0f}".format(-1)] * 6)
-            abs_diff.append('.')
+        ref_seqs.extend(ref_seq)
+        alt_seqs.extend(alt_seq)
+        ref_preds.extend(ref_pred)
+        alt_preds.extend(alt_pred)
+        abs_diffs.extend(abs_diff)
     
     # fill in df
     df['ref_seq'] = ref_seqs
     df['alt_seq'] = alt_seqs
     df['ref_preds'] = ref_preds
     df['alt_preds'] = alt_preds
-    df['abs_diff'] = abs_diff
+    df['abs_diff'] = abs_diffs
     
     tasks_ordering = ['del_frq', '1ins', '1del', 'onemod3', 'twomod3', 'frameshift']
     for i, t in enumerate(tasks_ordering):
@@ -191,7 +184,7 @@ def get_incomplete_bedfps():
     return incomplete_bedfps
 
 
-def get_tsvs(chrom, incomplete=False, model_fp=configs.MODEL_PATH):
+def get_tsvs(chrom, incomplete=False, model_fp=configs.MODEL_PATH, batch_size:int=32):
     """
     Run get_varscore function on every file in bed_dir
         - final .tsv dataframes have the columns
@@ -227,17 +220,17 @@ def get_tsvs(chrom, incomplete=False, model_fp=configs.MODEL_PATH):
       chr2  PDCD1|70    PDCD1   70  241852175  241852235      +  241852205   rs141119263   G   A   30  ...  0.090900  0.024949  0.065952    0.457806     0.748258     -0.290451     0.320004     0.145324      0.174680        0.768263        0.885476        -0.117213
     """
     chrom = str(chrom)
+    tf.keras.backend.set_floatx('float32')
     model = load_model(model_fp)
     if incomplete: fp_lst = get_incomplete_bedfps() # NOT running for the first time
     else: fp_lst = sorted([os.path.join(path, name) for path, subdirs, files in os.walk(configs.GENE_BED_DIR+'/%s/'%chrom) for name in files]) #20143 NOT 18079, running for first time
 
     for fp in fp_lst:
         genename = fp.split('/')[-1].replace('.bed', '')
-        # print(genename)
         start_time = time.time()
-        df = get_varscore(bed_fp=fp, model=model)
+        df = get_varscore(bed_fp=fp, model=model, batch_size=batch_size)
         end_time = time.time()
-        print(f"{genename}: {len(df)} lines, elapsed time: {end_time - start_time} seconds")
+        print(f"{genename}: {len(df)} lines, elapsed time: {(end_time - start_time):.2f} seconds")
         df.to_csv(os.path.join(configs.TSV_DIR, chrom, f"{genename}.tsv"), index=False, sep="\t")
         # df.to_csv(tsv_dir + '/%s/%s.tsv'%(chrom, genename), index=False, sep="\t")
 
@@ -245,9 +238,10 @@ def get_tsvs(chrom, incomplete=False, model_fp=configs.MODEL_PATH):
 if __name__ == "__main__": # see sbatch_tsv.sh
     parser = argparse.ArgumentParser(description='Making tsvs')
     parser.add_argument('--chrom', help='Chromosome with which to make bedsn')
+    parser.add_argument('--bs', type=int, default=32, help='batch size')
     args = parser.parse_args()
     make_tsvdirs()
-    get_tsvs(chrom=args.chrom)
+    get_tsvs(chrom=args.chrom, batch_size=args.bs)
 
 
 # DID NOT FILTER DISRUPTIVE PAMs WHEN MAKING -- COULD BE HELPFUL DOWNSTREAM TO FIGURE OUT WHICH HAVE DISRUPTIVE PAMS
