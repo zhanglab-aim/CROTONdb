@@ -117,7 +117,7 @@
                 x: posData,
                 y: diffData,
                 text: textData,
-                name: 'Other vairants',
+                name: 'Other variants',
                 mode: 'markers',
                 type: 'scatter',
                 marker: {
@@ -150,7 +150,7 @@
                     ],
                 },
                 yaxis: {
-                    title: 'Max difference'
+                    title: 'Max Variant Effect'
                 },
                 title: 'Variant Position in PAM ID: ' + variantData["pamid"]
             };
@@ -188,7 +188,7 @@
                     }];
 
                     var genderout = {
-                        title: "Allele Frequency Distribution by Gender"
+                        title: "Allele Frequency Distribution by Sex"
                     };
 
                     Plotly.newPlot('gender_plot', gender_data, genderout);
