@@ -89,7 +89,8 @@ def fetch_tabix_croton_predictions(
             if chrom:
                 tabix_result = list(
                     t.fetch(
-                        'chr{}'.format(chrom),
+                        # 'chr{}'.format(chrom),
+                        chrom,
                         start,
                         end,
                         parser=pysam.asTuple(),
@@ -166,13 +167,13 @@ def build_response_json(tabix_results_df, header_map):
         response["results"]["total"] = 0
         return response
 
-    REF_INDEX = 3
-    ALT_INDEX = 4
-    REF1MOD3_INDEX = 26
-    REF2MOD3_INDEX = 29
-    ALT1INS_INDEX = 21
-    ALT1MOD3_INDEX = 27
-    ALT2MOD3_INDEX = 30
+    # REF_INDEX = 3
+    # ALT_INDEX = 4
+    # REF1MOD3_INDEX = 26
+    # REF2MOD3_INDEX = 29
+    # ALT1INS_INDEX = 21
+    # ALT1MOD3_INDEX = 27
+    # ALT2MOD3_INDEX = 30
     # assert header_map[REF_INDEX] == 'ref'
     # assert header_map[ALT_INDEX] == 'alt'
     # assert header_map[REF1MOD3_INDEX] == 'ref_onemod3'
@@ -181,13 +182,13 @@ def build_response_json(tabix_results_df, header_map):
     # assert header_map[ALT1MOD3_INDEX] == 'alt_onemod3'
     # assert header_map[ALT2MOD3_INDEX] == 'alt_twomod3'
 
-    # REF_INDEX = 'ref'
-    # ALT_INDEX = 'alt'
-    # REF1MOD3_INDEX = 'ref_onemod3'
-    # REF2MOD3_INDEX = 'ref_twomod3'
-    # ALT1INS_INDEX = 'alt_1ins'
-    # ALT1MOD3_INDEX = 'alt_onemod3'
-    # ALT2MOD3_INDEX = 'alt_twomod3'
+    REF_INDEX = 'ref'
+    ALT_INDEX = 'alt'
+    REF1MOD3_INDEX = 'ref_onemod3'
+    REF2MOD3_INDEX = 'ref_twomod3'
+    ALT1INS_INDEX = 'alt_1ins'
+    ALT1MOD3_INDEX = 'alt_onemod3'
+    ALT2MOD3_INDEX = 'alt_twomod3'
 
     # FREQUENCIES
     ref_onemod3_mean = tabix_results_df[REF1MOD3_INDEX].astype(
@@ -209,8 +210,9 @@ def build_response_json(tabix_results_df, header_map):
         matrix[n_lst.index(tpl[1])][n_lst.index(tpl[0])
                                     ] = snp_value_counts.get(i)
 
-    filter_keys = ["chromosome", "pos", "id", "ref", "alt", "pamid", "start", "end", "strand", "ref_seq", "alt_seq",
-                   "abs_diff", "ref_1ins", "alt_1ins", "diff_1ins", "ref_onemod3", "alt_onemod3", "diff_onemod3", "ref_twomod3", "alt_twomod3", "diff_twomod3", "ref_frameshift", "alt_frameshift", "diff_frameshift"]
+    filter_keys = ["#chrom", "pos", "id", "ref", "alt", "pamid", "start", "end", "strand", "ref_seq", "alt_seq", "AF_info",
+                #    "abs_diff", "ref_1ins", "alt_1ins", "diff_1ins", "ref_onemod3", "alt_onemod3", "diff_onemod3", "ref_twomod3", "alt_twomod3", "diff_twomod3", "ref_frameshift", "alt_frameshift", "diff_frameshift"]
+                   "abs_diff", "ref_1ins", "alt_1ins", "ref_onemod3", "alt_onemod3", "ref_twomod3", "alt_twomod3", "ref_frameshift", "alt_frameshift"]
 
     predictions_list = convert_tabix_results(
         tabix_results_df, header_map=header_map, filter_keys=filter_keys)
